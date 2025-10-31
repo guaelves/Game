@@ -1,1 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>圍棋 AI</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    background-color: #f5deb3;
+  }
+  canvas {
+    background-color: #F0D9B5;
+    width: 90vmin; height: 90vmin;
+    touch-action: none;
+  }
+  #controls {
+    display: flex; flex-wrap: wrap;
+    gap: 10px; margin: 10px 0;
+    font-family: "Noto Sans TC", sans-serif;
+    justify-content: center;
+  }
+  #status, #winnerText, #capturedText, #stoneCount {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: 1.1em; color: #333;
+    margin: 4px 0;
+  }
+  button { cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="goBoard"></canvas>
+<div id="controls">
+  <label>遊戲模式：
+    <select id="gameMode">
+      <option value="single" selected>單人對 AI</option>
+      <option value="two">雙人對戰</option>
+    </select>
+  </label>
+  <label>棋盤格數：
+    <select id="boardSizeSelect">
+      <option value="19">19 路棋盤</option>
+      <option value="13" selected>13 路棋盤</option>
+      <option value="9">9 路棋盤</option>
+    </select>
+  </label>
+  <label>AI 難度：
+    <select id="aiLevel">
+      <option value="easy">初級</option>
+      <option value="medium" selected>中級</option>
+      <option value="pro">職業級</option>
+    </select>
+  </label>
+  <label>貼目 (白棋補償)： 
+    <input id="komiInput" type="number" value="6.5" step="0.5" style="width:60px"> 目
+  </label>
+  <button onclick="resetGame()">重新開始</button>
+  <button onclick="checkWinner()">🧮 計算勝負</button>
+</div>
+<div id="status">🟢 黑棋下子中</div>
+<div id="capturedText">黑棋被提：0  白棋被提：0</div>
+<div id="stoneCount">黑棋數量：0  白棋數量：0</div>
+<div id="winnerText"></div>
 
+<script>
+let BOARD_SIZE = 19;
+let board, koPoint = null;
+let komi = 6.5;
+let capturedBlack = 0, capturedWhite = 0;
+
+let canvas = document.getElementById('goBoard');
+let ctx = canvas.getContext('2d');
+let statusText = document.getElementById('status');
+let winnerText = document.getElementById('winnerText');
+let capturedText = document.getElementById('capturedText');
+let stoneCountText = document.getElementById('stoneCount');
+let aiLevel = document.getElementById('aiLevel');
+let boardSizeSelect = document.getElementById('boardSizeSelect');
+let komiInput = document.getElementById('komiInput');
+let gameMode = document.getElementById('gameMode');
+
+let CELL_SIZE, STONE_RADIUS;
+let isAIMoving = false;
+let lastMove = null;
+let previousBoard = null;
+let currentPlayer = 1;
+let gameOver = false;
+
+// === 初始化 ===
+function initBoard(size){
+  BOARD_SIZE = size;
+  board = Array.from({length: BOARD_SIZE},()=>Array(BOARD_SIZE).fill(0));
+  previousBoard = null;
+  koPoint = null;
+  lastMove = null;
+  currentPlayer = 1;
+  capturedBlack = 0;
+  capturedWhite = 0;
+  gameOver = false;
+  resizeCanvas();
+  drawBoard();
+  statusText.textContent = "🟢 黑棋下子中";
+  winnerText.textContent = "";
+  capturedText.textContent = `黑棋被提：${capturedBlack}  白棋被提：${capturedWhite}`;
+  stoneCountText.textContent = `黑棋數量：0  白棋數量：0`;
+  isAIMoving = false;
+}
+
+function resizeCanvas(){
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  CELL_SIZE = canvas.width / BOARD_SIZE;
+  STONE_RADIUS = CELL_SIZE/2 - 2;
+  drawBoard();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// === 棋盤繪製 ===
+function drawBoard(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+
+  for(let i=0;i<BOARD_SIZE;i++){
+    ctx.beginPath();
+    ctx.moveTo(CELL_SIZE/2, CELL_SIZE/2+i*CELL_SIZE);
+    ctx.lineTo(CELL_SIZE/2+(BOARD_SIZE-1)*CELL_SIZE, CELL_SIZE/2+i*CELL_SIZE);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(CELL_SIZE/2+i*CELL_SIZE, CELL_SIZE/2);
+    ctx.lineTo(CELL_SIZE/2+i*CELL_SIZE, CELL_SIZE/2+(BOARD_SIZE-1)*CELL_SIZE);
+    ctx.stroke();
+  }
+
+  let stars = [];
+  if (BOARD_SIZE === 19) stars = [3,9,15];
+  else if (BOARD_SIZE === 13) stars = [3,6,9];
+  else if (BOARD_SIZE === 9) stars = [2,4,6];
+
+  ctx.fillStyle = '#000';
+  for(let i of stars){
+    for(let j of stars){
+      ctx.beginPath();
+      ctx.arc(CELL_SIZE/2+i*CELL_SIZE, CELL_SIZE/2+j*CELL_SIZE,3,0,2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  for(let r=0;r<BOARD_SIZE;r++){
+    for(let c=0;c<BOARD_SIZE;c++){
+      if(board[r][c]!==0){
+        ctx.beginPath();
+        ctx.arc(CELL_SIZE/2+c*CELL_SIZE, CELL_SIZE/2+r*CELL_SIZE, STONE_RADIUS,0,2*Math.PI);
+        ctx.fillStyle = board[r][c]===1?'black':'white';
+        ctx.fill();
+      }
+    }
+  }
+
+  if(lastMove){
+    let [lr, lc] = lastMove;
+    ctx.beginPath();
+    ctx.arc(CELL_SIZE/2 + lc*CELL_SIZE, CELL_SIZE/2 + lr*CELL_SIZE, STONE_RADIUS + 2, 0, 2*Math.PI);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'yellow'; ctx.stroke();
+  }
+
+  if(koPoint){
+    ctx.beginPath();
+    ctx.arc(CELL_SIZE/2 + koPoint[1]*CELL_SIZE, CELL_SIZE/2 + koPoint[0]*CELL_SIZE, 5, 0, 2*Math.PI);
+    ctx.fillStyle = 'red'; ctx.fill();
+  }
+
+  updateStoneCount();
+}
+
+function updateStoneCount(){
+  let blackCount = 0, whiteCount = 0;
+  for(let r=0;r<BOARD_SIZE;r++){
+    for(let c=0;c<BOARD_SIZE;c++){
+      if(board[r][c]===1) blackCount++;
+      if(board[r][c]===2) whiteCount++;
+    }
+  }
+  stoneCountText.textContent = `黑棋數量：${blackCount}  白棋數量：${whiteCount}`;
+}
+
+// === 棋理 ===
+function cloneBoard(b){ return b.map(r=>[...r]); }
+
+function getGroup(r,c,color,visited=new Set()){
+  let key=r+','+c; if(visited.has(key)) return [];
+  visited.add(key);
+  let group=[[r,c]];
+  for(let [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    let nr=r+dr,nc=c+dc;
+    if(nr>=0&&nr<BOARD_SIZE&&nc>=0&&nc<BOARD_SIZE&&board[nr][nc]===color)
+      group=group.concat(getGroup(nr,nc,color,visited));
+  }
+  return group;
+}
+
+function hasLiberties(r,c,color){
+  let group=getGroup(r,c,color);
+  for(let [gr,gc] of group){
+    for(let [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      let nr=gr+dr,nc=gc+dc;
+      if(nr>=0&&nr<BOARD_SIZE&&nc>=0&&nc<BOARD_SIZE&&board[nr][nc]===0)
+        return true;
+    }
+  }
+  return false;
+}
+
+function removeDead(color){
+  let removed=[];
+  for(let r=0;r<BOARD_SIZE;r++){
+    for(let c=0;c<BOARD_SIZE;c++){
+      if(board[r][c]===color && !hasLiberties(r,c,color)){
+        let group=getGroup(r,c,color);
+        for(let [gr,gc] of group){ board[gr][gc]=0; removed.push([gr,gc]); }
+      }
+    }
+  }
+  if(color===1) capturedBlack += removed.length;
+  else capturedWhite += removed.length;
+  capturedText.textContent = `黑棋被提：${capturedBlack}  白棋被提：${capturedWhite}`;
+  updateStoneCount();
+  return removed;
+}
+
+function isSameBoard(b1,b2){
+  for(let r=0;r<BOARD_SIZE;r++)
+    for(let c=0;c<BOARD_SIZE;c++)
+      if(b1[r][c]!==b2[r][c]) return false;
+  return true;
+}
+
+// 🚩 結束遊戲
+function endGame(loserColor){
+  gameOver = true;
+  let winnerColor = loserColor === 1 ? "白棋" : "黑棋";
+  statusText.textContent = `❌ ${loserColor===1?"黑棋":"白棋"} 違規！`;
+  winnerText.textContent = `🏁 ${winnerColor} 勝！`;
+}
+
+// === 下子 ===
+function placeStone(r,c,color){
+  if(r<0||c<0||r>=BOARD_SIZE||c>=BOARD_SIZE){ endGame(color); return false; }
+  if(board[r][c]!==0){ endGame(color); return false; }
+  if(koPoint && koPoint[0]===r && koPoint[1]===c){ endGame(color); return false; }
+
+  let temp=cloneBoard(board);
+  board[r][c]=color;
+  let removed = removeDead(3-color);
+
+  if(!hasLiberties(r,c,color)){
+    board=temp;
+    endGame(color);
+    return false;
+  }
+
+  if(removed.length===1){
+    if(previousBoard && isSameBoard(previousBoard, board)){
+      board=temp;
+      endGame(color);
+      return false;
+    }
+    koPoint = removed[0];
+  } else {
+    koPoint = null;
+  }
+
+  previousBoard = cloneBoard(temp);
+  lastMove=[r,c];
+  return true;
+}
+
+// === AI ===
+function evaluateBoard(color){
+  let score=0;
+  for(let r=0;r<BOARD_SIZE;r++){
+    for(let c=0;c<BOARD_SIZE;c++){
+      if(board[r][c]===color) score+=1;
+      else if(board[r][c]===3-color) score-=1;
+    }
+  }
+  return score;
+}
+
+function aiMove(){
+  if(gameOver) return;
+  isAIMoving=true;
+  let moves=[];
+  for(let r=0;r<BOARD_SIZE;r++)
+    for(let c=0;c<BOARD_SIZE;c++)
+      if(board[r][c]===0)
+        moves.push([r,c]);
+  if(moves.length===0){ isAIMoving=false; return; }
+
+  let bestScore=-Infinity, bestMove=null;
+  for(let [r,c] of moves){
+    board[r][c]=2;
+    let score=evaluateBoard(2);
+    board[r][c]=0;
+    if(score>bestScore){ bestScore=score; bestMove=[r,c]; }
+  }
+
+  if(bestMove){
+    if(!placeStone(bestMove[0], bestMove[1],2)){
+      endGame(2);
+    }
+  }
+  drawBoard();
+  statusText.textContent="🟢 黑棋下子中";
+  isAIMoving=false;
+}
+
+// === 事件 ===
+canvas.addEventListener('click', playerMove);
+
+function getCellFromEvent(e){
+  let rect = canvas.getBoundingClientRect();
+  let x = e.clientX - rect.left;
+  let y = e.clientY - rect.top;
+  let c = Math.round((x - CELL_SIZE/2)/CELL_SIZE);
+  let r = Math.round((y - CELL_SIZE/2)/CELL_SIZE);
+  return [r,c];
+}
+
+function playerMove(e){
+  if(isAIMoving || gameOver) return;
+  let [r,c]=getCellFromEvent(e);
+  if(gameMode.value==='single'){
+    if(placeStone(r,c,1)){
+      drawBoard();
+      if(!gameOver){
+        statusText.textContent="🔵 AI 下子中...";
+        setTimeout(aiMove,200);
+      }
+    } else if(!gameOver){
+      endGame(1);
+    }
+  } else { // 雙人模式
+    if(placeStone(r,c,currentPlayer)){
+      drawBoard();
+      if(!gameOver){
+        currentPlayer=3-currentPlayer;
+        statusText.textContent=currentPlayer===1?"🟢 黑棋下子中":"⚪ 白棋下子中";
+      }
+    } else if(!gameOver){
+      endGame(currentPlayer);
+    }
+  }
+}
+
+// === 重置 ===
+function resetGame(){
+  let size=parseInt(boardSizeSelect.value);
+  komi=parseFloat(komiInput.value);
+  initBoard(size);
+}
+
+// === 勝負計算 ===
+function checkWinner(){
+  let black=0,white=komi;
+  for(let r=0;r<BOARD_SIZE;r++)
+    for(let c=0;c<BOARD_SIZE;c++){
+      if(board[r][c]===1) black++;
+      if(board[r][c]===2) white++;
+    }
+  black += capturedBlack; white += capturedWhite;
+  let winner = black>white ? "黑棋勝" : (white>black ? "白棋勝" : "平手");
+  winnerText.textContent = `🧮 勝負計算: 黑 ${black}  白 ${white}  ⇒ ${winner}`;
+}
+
+// === 初始 ===
+initBoard(parseInt(boardSizeSelect.value));
+</script>
+</body>
+</html>
