@@ -6,197 +6,131 @@
     <title>旅遊助手</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22旅遊助手%22,%22short_name%22:%22旅遊助手%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#f8fafc%22,%22theme_color%22:%22#4f46e5%22}">
     <style>
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
-        .photo-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #f1f5f9; }
-        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
-        .safe-bottom { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         [v-cloak] { display: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+        .tab-active { color: #4f46e5; border-bottom: 2px solid #4f46e5; }
+        .line-through-text { text-decoration: line-through; color: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-gray-50">
 
-<div id="app" v-cloak class="max-w-md mx-auto min-h-screen flex flex-col">
-    <header class="bg-indigo-600 text-white p-6 shadow-lg sticky top-0 z-50">
-        <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-black tracking-tight">旅遊助手</h1>
-            <div class="flex gap-2">
-                <button @click="exportData" class="text-xs bg-white/20 p-2 rounded-full">📤 匯出</button>
-                <button @click="saveData" class="text-xs bg-white text-indigo-600 px-3 py-2 rounded-full font-bold">儲存</button>
-            </div>
+<div id="app" v-cloak class="max-w-md mx-auto min-h-screen flex flex-col bg-white shadow-lg">
+    
+    <header class="bg-indigo-600 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl font-bold">旅遊助手 🏯</h1>
+            <button @click="saveData" class="bg-white text-indigo-600 px-4 py-1 rounded-full text-sm font-bold">儲存</button>
         </div>
-        <div class="mt-4 flex items-center gap-2">
-            <span class="text-indigo-200 text-sm font-medium">出發日期：</span>
-            <input type="date" v-model="startDate" class="bg-indigo-700/50 border-none rounded-lg px-2 py-1 text-sm outline-none">
+        
+        <div class="flex bg-indigo-700 rounded-lg p-1">
+            <button @click="tab = 'plan'" :class="tab === 'plan' ? 'bg-white text-indigo-600' : 'text-white'" class="flex-1 py-1.5 rounded-md text-sm font-bold transition-all">行程規劃</button>
+            <button @click="tab = 'pack'" :class="tab === 'pack' ? 'bg-white text-indigo-600' : 'text-white'" class="flex-1 py-1.5 rounded-md text-sm font-bold transition-all">行李清單</button>
         </div>
     </header>
 
-    <div class="bg-white border-b sticky top-[108px] z-40 overflow-x-auto hide-scrollbar flex p-3 gap-2">
-        <button v-for="(day, index) in days" :key="index"
-            @click="currentDayIndex = index"
-            :class="currentDayIndex === index ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'"
-            class="flex-shrink-0 px-6 py-2 rounded-full font-bold transition-all text-sm">
-            第 {{ index + 1 }} 天
-        </button>
-        <button @click="addDay" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full font-bold text-sm">+</button>
+    <div v-if="tab === 'plan'" class="flex-1">
+        <div class="flex overflow-x-auto p-3 gap-2 border-b bg-gray-50 no-scrollbar">
+            <button v-for="(day, i) in days" :key="i" @click="curDay = i"
+                :class="curDay === i ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 border'"
+                class="flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm">
+                第 {{ i + 1 }} 天
+            </button>
+            <button @click="addDay" class="px-4 py-2 bg-green-500 text-white rounded-xl font-bold">+</button>
+        </div>
+
+        <main class="p-4 space-y-4">
+            <div v-for="(act, idx) in days[curDay].activities" :key="idx" class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm relative">
+                <button @click="delAct(idx)" class="absolute top-3 right-3 text-gray-300">✕</button>
+                <div class="flex gap-2 mb-2">
+                    <input type="time" v-model="act.time" class="text-indigo-600 font-bold outline-none bg-gray-50 px-1 rounded">
+                    <input v-model="act.loc" placeholder="目的地" class="flex-1 font-bold outline-none border-b focus:border-indigo-400">
+                </div>
+                <textarea v-model="act.note" placeholder="備註內容..." class="w-full text-sm text-gray-500 outline-none h-12 mb-2"></textarea>
+                
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <div v-for="(p, pi) in act.photos" :key="pi" class="relative aspect-square">
+                        <img :src="p" class="w-full h-full object-cover rounded-lg border">
+                        <button @click="act.photos.splice(pi,1)" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px]">✕</button>
+                    </div>
+                    <label v-if="act.photos.length < 3" class="aspect-square border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xl cursor-pointer">
+                        +
+                        <input type="file" accept="image/*" class="hidden" @change="uploadImg($event, idx)">
+                    </label>
+                </div>
+
+                <a :href="'https://www.google.com/maps/search/' + encodeURIComponent(act.loc)" target="_blank" class="text-xs text-blue-500 font-bold bg-blue-50 px-2 py-1 rounded italic">📍 Google Map</a>
+            </div>
+            <button @click="addAct" class="w-full py-4 border-2 border-dashed border-indigo-200 text-indigo-400 font-bold rounded-2xl">+ 新增行程點</button>
+            <button @click="delDay" v-if="days.length > 1" class="w-full text-xs text-red-300 py-2">刪除這整天的行程</button>
+        </main>
     </div>
 
-    <main class="flex-1 p-4 pb-32">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold text-slate-800">Day {{ currentDayIndex + 1 }} 行程清單</h2>
-            <button @click="removeDay" v-if="days.length > 1" class="text-red-400 text-xs hover:underline">刪除本日</button>
+    <div v-if="tab === 'pack'" class="flex-1 p-4">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h2 class="text-lg font-bold text-gray-700">準備清單</h2>
+            <button @click="addPack" class="text-indigo-600 font-bold">+ 新增項目</button>
         </div>
-
-        <div v-for="(item, idx) in days[currentDayIndex].activities" :key="idx" 
-             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
-            
-            <div class="flex justify-between items-start gap-2 mb-3">
-                <input v-model="item.time" type="time" class="text-indigo-600 font-bold outline-none border-b border-transparent focus:border-indigo-100">
-                <button @click="removeItem(idx)" class="text-slate-300 hover:text-red-500">✕</button>
-            </div>
-
-            <input v-model="item.location" placeholder="要去哪裡？(如：清水寺)" 
-                   class="w-full text-lg font-bold mb-2 outline-none placeholder:text-slate-300">
-            
-            <textarea v-model="item.note" placeholder="備註：訂單編號、必買清單..." 
-                      class="w-full text-sm text-slate-500 mb-3 outline-none resize-none" rows="2"></textarea>
-
-            <div class="photo-grid mb-3">
-                <div v-for="(img, imgIdx) in item.photos" :key="imgIdx" class="photo-item">
-                    <img :src="img" @click="viewImage(img)">
-                    <button @click="removePhoto(idx, imgIdx)" class="absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 text-[10px]">✕</button>
-                </div>
-                <label v-if="item.photos.length < 6" class="photo-item flex flex-col items-center justify-center border-2 border-dashed border-slate-200 cursor-pointer">
-                    <span class="text-xl text-slate-300">+</span>
-                    <span class="text-[10px] text-slate-400">上傳/拍照</span>
-                    <input type="file" accept="image/*" class="hidden" @change="handleFileUpload($event, idx)">
-                </label>
-            </div>
-
-            <div class="flex gap-2">
-                <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.location)" 
-                   target="_blank" class="text-xs flex items-center bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold">
-                    📍 開啟地圖
-                </a>
+        <div class="space-y-2">
+            <div v-for="(item, i) in packs" :key="i" class="flex items-center gap-3 bg-white p-3 rounded-xl border">
+                <input type="checkbox" v-model="item.done" class="w-5 h-5 accent-indigo-600">
+                <input v-model="item.text" :class="{'line-through-text': item.done}" class="flex-1 outline-none text-sm font-medium">
+                <button @click="packs.splice(i,1)" class="text-gray-200 text-sm">✕</button>
             </div>
         </div>
+    </div>
 
-        <button @click="addActivity" class="w-full py-5 border-2 border-dashed border-indigo-200 rounded-2xl text-indigo-400 font-bold hover:bg-indigo-50 transition-colors mt-2">
-            + 新增行程地點
-        </button>
-    </main>
-
-    <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-100 px-6 py-4 safe-bottom">
-        <div class="max-w-md mx-auto flex justify-between items-center text-xs font-bold text-slate-400">
-            <p>資料儲存於手機本地</p>
-            <button @click="clearAll" class="text-red-300">清空所有行程</button>
-        </div>
+    <footer class="p-4 text-center text-[10px] text-gray-400 safe-area-bottom">
+        資料儲存於本機瀏覽器 | <button @click="reset">重設所有資料</button>
     </footer>
 </div>
 
 <script>
-    const { createApp, ref, onMounted } = Vue;
+const { createApp, ref, onMounted } = Vue;
+createApp({
+    setup() {
+        const tab = ref('plan');
+        const curDay = ref(0);
+        const days = ref([{ activities: [] }]);
+        const packs = ref([
+            {text: '護照/簽證', done: false}, {text: '日幣現金', done: false}, {text: '充電器/行動電源', done: false}
+        ]);
 
-    createApp({
-        setup() {
-            const startDate = ref('2026-04-01');
-            const currentDayIndex = ref(0);
-            const days = ref([]);
+        onMounted(() => {
+            const saved = localStorage.getItem('travel_v3');
+            if (saved) {
+                const data = JSON.parse(saved);
+                days.value = data.days || days.value;
+                packs.value = data.packs || packs.value;
+            }
+        });
 
-            const defaultTrip = [
-                { activities: [
-                    { time: '10:00', location: '關西國際機場', note: '領取周遊券', photos: [] },
-                    { time: '15:00', location: '心齋橋', note: '吃章魚燒', photos: [] }
-                ]},
-                { activities: [{ time: '09:00', location: '清水寺', note: '穿和服', photos: [] }] },
-                { activities: [{ time: '10:00', location: '日本環球影城', note: '任天堂園區', photos: [] }] },
-                { activities: [{ time: '11:00', location: '黑門市場', note: '買干貝', photos: [] }] }
-            ];
-
-            onMounted(() => {
-                const saved = localStorage.getItem('travel_assistant_v1');
-                days.value = saved ? JSON.parse(saved) : defaultTrip;
-            });
-
-            const addDay = () => {
-                days.value.push({ activities: [] });
-                currentDayIndex.value = days.value.length - 1;
-            };
-
-            const removeDay = () => {
-                if(confirm('確定要刪除這天的所有行程嗎？')) {
-                    days.value.splice(currentDayIndex.value, 1);
-                    currentDayIndex.value = 0;
-                }
-            };
-
-            const addActivity = () => {
-                days.value[currentDayIndex.value].activities.push({
-                    time: '12:00', location: '', note: '', photos: []
-                });
-            };
-
-            const removeItem = (idx) => {
-                days.value[currentDayIndex.value].activities.splice(idx, 1);
-            };
-
-            const handleFileUpload = (event, activityIdx) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                
+        const addDay = () => { days.value.push({ activities: [] }); curDay.value = days.value.length - 1; };
+        const delDay = () => { if(confirm('刪除這天？')) { days.value.splice(curDay.value, 1); curDay.value = 0; }};
+        const addAct = () => days.value[curDay.value].activities.push({ time: '09:00', loc: '', note: '', photos: [] });
+        const delAct = (i) => days.value[curDay.value].activities.splice(i, 1);
+        const addPack = () => packs.value.unshift({ text: '', done: false });
+        
+        const uploadImg = (e, idx) => {
+            const file = e.target.files[0];
+            if (file && file.size < 1000000) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    // 為了效能，這裡可以加入圖片壓縮邏輯
-                    days.value[currentDayIndex.value].activities[activityIdx].photos.push(e.target.result);
-                };
+                reader.onload = (ev) => days.value[curDay.value].activities[idx].photos.push(ev.target.result);
                 reader.readAsDataURL(file);
-            };
+            } else { alert('請上傳小於 1MB 的圖片'); }
+        };
 
-            const removePhoto = (actIdx, imgIdx) => {
-                days.value[currentDayIndex.value].activities[actIdx].photos.splice(imgIdx, 1);
-            };
+        const saveData = () => {
+            localStorage.setItem('travel_v3', JSON.stringify({ days: days.value, packs: packs.value }));
+            alert('儲存成功！');
+        };
 
-            const saveData = () => {
-                try {
-                    localStorage.setItem('travel_assistant_v1', JSON.stringify(days.value));
-                    alert('行程已安全儲存！');
-                } catch (e) {
-                    alert('儲存失敗：照片檔案過大，請刪除部分照片後再試。');
-                }
-            };
+        const reset = () => { if(confirm('清空所有資料？')) { localStorage.removeItem('travel_v3'); location.reload(); }};
 
-            const exportData = () => {
-                const dataStr = JSON.stringify(days.value);
-                const blob = new Blob([dataStr], {type: "application/json"});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `我的行程_${new Date().toLocaleDateString()}.json`;
-                a.click();
-            };
-
-            const clearAll = () => {
-                if(confirm('警告：這將刪除所有已儲存的行程與照片。確定嗎？')) {
-                    localStorage.removeItem('travel_assistant_v1');
-                    location.reload();
-                }
-            };
-
-            const viewImage = (url) => {
-                window.open(url, '_blank');
-            };
-
-            return { 
-                startDate, days, currentDayIndex, addDay, removeDay, 
-                addActivity, removeItem, handleFileUpload, removePhoto, 
-                saveData, exportData, clearAll, viewImage 
-            };
-        }
-    }).mount('#app');
+        return { tab, curDay, days, packs, addDay, delDay, addAct, delAct, addPack, uploadImg, saveData, reset };
+    }
+}).mount('#app');
 </script>
 </body>
 </html>
