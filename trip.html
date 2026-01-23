@@ -96,26 +96,27 @@
                     <button @click="addDay" class="flex-shrink-0 w-10 h-10 border-2 border-dashed border-slate-300 rounded-full text-slate-500">+</button>
                 </div>
 
-                <div v-for="(act, idx) in currentTrip.days[curDay].activities" :key="idx" class="card-elegant p-4 relative">
-                    <button @click="currentTrip.days[curDay].activities.splice(idx, 1)" class="absolute top-2 right-2 text-slate-300 font-bold">✕</button>
-                    <div class="flex items-center gap-2 mb-2">
-                        <input v-model="act.time" class="w-12 text-slate-800 font-bold outline-none text-sm" placeholder="時間">
-                        <div class="flex-1 flex items-center border-b border-stone-200">
-                            <input v-model="act.loc" class="flex-1 font-bold outline-none text-sm py-1" placeholder="地點名稱">
-                            <a v-if="act.loc" :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(act.loc)" target="_blank" class="ml-1 text-[10px] text-blue-700 font-bold flex items-center whitespace-nowrap">
-                                📍地圖
-                            </a>
+                <div v-for="(act, idx) in currentTrip.days[curDay].activities" :key="idx" class="card-elegant p-4 relative border border-stone-200">
+                    <button @click="currentTrip.days[curDay].activities.splice(idx, 1)" class="absolute top-2 right-2 p-1 text-slate-300 hover:text-rose-500 transition-colors font-bold">✕</button>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input v-model="act.time" class="w-12 text-slate-800 font-bold outline-none text-sm" placeholder="時間">
+                            <div class="flex-1 border-b border-stone-200">
+                                <input v-model="act.loc" class="w-full font-bold outline-none text-sm py-1" placeholder="地點名稱">
+                            </div>
                         </div>
+                        <div v-if="act.loc" class="pl-14">
+                            <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(act.loc)" target="_blank" class="text-[10px] text-blue-800 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100 inline-flex items-center gap-1">📍 在地圖中開啟</a>
+                        </div>
+                        <textarea v-model="act.note" class="w-full text-[11px] text-slate-600 font-bold outline-none border-l-2 border-stone-100 pl-2 mt-1" placeholder="行程筆記..." rows="1"></textarea>
                     </div>
-                    <textarea v-model="act.note" class="w-full text-[11px] text-slate-600 font-bold outline-none mb-2" placeholder="行程筆記..."></textarea>
-                    
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-3 gap-2 mt-3">
                         <div v-for="(p, pi) in act.photos" :key="pi" class="relative aspect-square">
-                            <img :src="p" class="w-full h-full object-cover rounded-md">
-                            <button @click="act.photos.splice(pi,1)" class="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-4 h-4 text-[10px]">✕</button>
+                            <img :src="p" class="w-full h-full object-cover rounded-md shadow-sm">
+                            <button @click="act.photos.splice(pi,1)" class="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center">✕</button>
                         </div>
-                        <label v-if="act.photos.length < 3" class="aspect-square border-2 border-dashed border-stone-200 rounded-md flex items-center justify-center text-slate-300 cursor-pointer">
-                            <span class="text-xl">+</span>
+                        <label v-if="act.photos.length < 3" class="aspect-square border-2 border-dashed border-stone-200 rounded-md flex flex-col items-center justify-center text-slate-300 cursor-pointer">
+                            <span class="text-xl">+</span><span class="text-[8px] font-bold">照片</span>
                             <input type="file" class="hidden" accept="image/*" @change="uploadActImg($event, idx)">
                         </label>
                     </div>
@@ -128,36 +129,36 @@
                     <h3 class="text-xs font-black text-slate-500 border-l-4 border-l-slate-400 pl-2 uppercase tracking-widest">{{ cat.label }}</h3>
                     <div class="grid grid-cols-2 gap-3">
                         <div v-for="(img, ii) in currentTrip.vault[cat.key]" :key="ii" class="relative">
-                            <img :src="img" class="w-full aspect-video object-cover rounded-lg shadow-sm" @click="openImg(img)">
+                            <img :src="img" class="w-full aspect-video object-cover rounded-lg shadow-sm border border-stone-100" @click="openImg(img)">
                             <button @click="currentTrip.vault[cat.key].splice(ii,1)" class="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 text-xs">✕</button>
                         </div>
-                        <label class="aspect-video border-2 border-dashed border-stone-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer text-slate-400">
+                        <label class="aspect-video border-2 border-dashed border-stone-200 rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer text-slate-400 hover:bg-stone-50">
                             <span class="text-lg font-bold">+</span>
-                            <span class="text-[9px] font-bold">上傳</span>
-                            <input type="file" class="hidden" accept="image/*" @change="uploadVaultImg($event, cat.key)">
+                            <span class="text-[9px] font-bold">新增/連選多張</span>
+                            <input type="file" class="hidden" accept="image/*" multiple @change="uploadVaultImgs($event, cat.key)">
                         </label>
                     </div>
                 </div>
             </div>
 
-            <div v-if="tab === 'pack'" class="space-y-4">
+            <div v-if="tab === 'pack'" class="space-y-4 pb-10">
                 <div class="flex justify-between items-center px-1">
                     <h3 class="text-xs font-bold text-slate-400 tracking-widest uppercase">Packing List</h3>
-                    <button @click="copyPreviousPacks" class="text-[10px] bg-slate-200 px-2 py-1 rounded font-bold text-slate-600">從之前的行程複製清單</button>
+                    <button @click="copyPreviousPacks" class="text-[10px] bg-slate-200 px-2 py-1 rounded font-bold text-slate-600">複製之前清單</button>
                 </div>
-                <div class="card-elegant p-4">
-                    <div v-for="(p, i) in currentTrip.packs" :key="i" class="flex items-center gap-3 py-2 border-b border-stone-50 last:border-0">
-                        <input type="checkbox" v-model="p.done" class="w-4 h-4 accent-slate-700">
+                <div v-for="(items, category) in currentTrip.packs" :key="category" class="card-elegant p-4 mb-4">
+                    <h4 class="text-xs font-black text-slate-500 mb-3 border-b border-stone-100 pb-1 italic">{{ category }}</h4>
+                    <div v-for="(p, i) in items" :key="i" class="flex items-center gap-3 py-2 border-b border-stone-50 last:border-0">
+                        <input type="checkbox" v-model="p.done" class="w-5 h-5 accent-slate-700">
                         <input v-model="p.text" class="flex-1 outline-none text-sm font-bold" :class="p.done ? 'line-through text-slate-300':''">
-                        <button @click="currentTrip.packs.splice(i,1)" class="text-slate-200 font-bold">✕</button>
+                        <button @click="items.splice(i,1)" class="text-slate-200 font-bold">✕</button>
                     </div>
-                    <button @click="currentTrip.packs.push({text:'',done:false})" class="mt-4 text-xs text-slate-400 font-bold">+ 手動新增項目</button>
                 </div>
             </div>
         </main>
 
         <footer class="fixed bottom-0 left-0 right-0 p-4 bg-[#fdfaf7]/95 text-center border-t border-stone-100">
-            <p class="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase">COLLECT MOMENTS — Travel Pro V4</p>
+            <p class="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase italic">Enjoy Your Journey — Travel Pro</p>
         </footer>
     </template>
 </div>
@@ -181,7 +182,25 @@ createApp({
 
         const currentTrip = computed(() => allTrips.value[currentTripId.value]);
 
-        // 範例資料
+        const initPacks = () => ({
+            '証件類/貨幣': [
+                {text:'護照',done:false}, {text:'身份證',done:false}, {text:'日幣',done:false}, 
+                {text:'台幣',done:false}, {text:'信用卡',done:false}, {text:'車票',done:false}, {text:'西瓜卡',done:false}
+            ],
+            '個人用品': [
+                {text:'保養品',done:false}, {text:'護唇膏',done:false}, {text:'日拋隱眼',done:false}, 
+                {text:'眼鏡盒',done:false}, {text:'水壺',done:false}, {text:'背包',done:false}, 
+                {text:'溼紙巾',done:false}, {text:'面紙',done:false}, {text:'自拍棒',done:false}, {text:'衣物',done:false}
+            ],
+            '3C用品': [
+                {text:'手機',done:false}, {text:'行動電源',done:false}, {text:'耳機',done:false}, 
+                {text:'充電線',done:false}, {text:'排插',done:false}
+            ],
+            '其他': [
+                {text:'駕照譯本文件',done:false}, {text:'預約機場接送',done:false}
+            ]
+        });
+
         const okinawaDemo = {
             info: { title: '2025 OKINAWA 沖繩旅遊', hotel: 'ホテル オーシャン那霸国際通リ' },
             flightData: {
@@ -189,23 +208,19 @@ createApp({
                 back: { date: '2025/5/10', time: '16:45', loc: 'OKA→TPE', terminal: '國際', no: 'ITXXX' }
             },
             days: [
-                { activities: [{time:'09:00', loc:'機場接送', note:'出發', photos:[]}, {time:'15:00', loc:'飛機', note:'TPE->OKA', photos:[]}] },
-                { activities: [{time:'09:00', loc:'那霸空港取車', note:'那霸空港飛見城店', photos:[]}, {time:'10:00', loc:'系滿市場', note:'', photos:[]}] },
+                { activities: [{time:'09:00', loc:'機場接送', note:'出發前往機場', photos:[]}, {time:'15:00', loc:'飛機起飛', note:'TPE->OKA', photos:[]}] },
+                { activities: [{time:'09:00', loc:'那霸空港取車', note:'那霸空港飛見城店', photos:[]}, {time:'10:00', loc:'系滿市場', note:'吃海鮮', photos:[]}] },
                 { activities: [{time:'10:00', loc:'美麗海水族館', note:'', photos:[]}, {time:'16:00', loc:'美國村', note:'', photos:[]}] },
                 { activities: [{time:'13:00', loc:'台灣小吃「花蓮」', note:'宜野灣市喜友名1039', photos:[]}, {time:'19:00', loc:'還車', note:'', photos:[]}] },
                 { activities: [{time:'09:00', loc:'波上宮', note:'', photos:[]}, {time:'17:00', loc:'國際通 ぶち燒肉', note:'', photos:[]}] },
-                { activities: [{time:'11:00', loc:'那霸機場', note:'', photos:[]}, {time:'16:45', loc:'起飛', note:'', photos:[]}] }
+                { activities: [{time:'11:00', loc:'那霸機場', note:'', photos:[]}, {time:'16:45', loc:'飛機起飛', note:'', photos:[]}] }
             ],
             vault: { flight: [], hotel: [], vjw: [], insurance: [], tickets: [] },
-            packs: [
-                {text:'護照、身分證、日幣、台幣', done:false}, {text:'西瓜卡、信用卡、車票', done:false},
-                {text:'保養品、隱眼、眼鏡盒', done:false}, {text:'水壺、自拍棒、行動電源', done:false},
-                {text:'駕照譯本、機場接送預約', done:false}
-            ]
+            packs: initPacks()
         };
 
         onMounted(() => {
-            const saved = localStorage.getItem('travel_v4_data');
+            const saved = localStorage.getItem('travel_v4_3_data');
             if (saved) {
                 allTrips.value = JSON.parse(saved);
             } else {
@@ -214,35 +229,28 @@ createApp({
         });
 
         const openTrip = (id) => { currentTripId.value = id; curDay.value = 0; tab.value = 'info'; };
-        
         const createNewTrip = () => {
             const id = 'trip_' + Date.now();
             allTrips.value[id] = {
                 info: {title:'新行程', hotel:''},
-                flightData: {
-                    go: { date:'', time:'', loc:'', terminal:'', no:'' },
-                    back: { date:'', time:'', loc:'', terminal:'', no:'' }
-                },
+                flightData: { go: { date:'', time:'', loc:'', terminal:'', no:'' }, back: { date:'', time:'', loc:'', terminal:'', no:'' } },
                 days: [{activities:[]}],
                 vault: {flight:[], hotel:[], vjw:[], insurance:[], tickets:[]},
-                packs: []
+                packs: initPacks()
             };
             currentTripId.value = id;
         };
 
         const copyPreviousPacks = () => {
             const tripIds = Object.keys(allTrips.value).filter(id => id !== currentTripId.value);
-            if (tripIds.length === 0) { alert('沒有其他行程可以複製'); return; }
+            if (tripIds.length === 0) return;
             const lastTrip = allTrips.value[tripIds[tripIds.length-1]];
-            if (confirm(`是否要複製「${lastTrip.info.title}」的行李清單？`)) {
-                currentTrip.value.packs = JSON.parse(JSON.stringify(lastTrip.packs)).map(p => ({...p, done: false}));
+            if (confirm(`複製「${lastTrip.info.title}」的行李清單？`)) {
+                currentTrip.value.packs = JSON.parse(JSON.stringify(lastTrip.packs));
+                for (let cat in currentTrip.value.packs) { currentTrip.value.packs[cat].forEach(p => p.done = false); }
             }
         };
 
-        const deleteTrip = () => { if(confirm('確定刪除此行程？')) { delete allTrips.value[currentTripId.value]; currentTripId.value = null; saveData(); } };
-        const addDay = () => { currentTrip.value.days.push({activities:[]}); curDay.value = currentTrip.value.days.length - 1; };
-        const addAct = () => { currentTrip.value.days[curDay.value].activities.push({time:'', loc:'', note:'', photos:[]}); };
-        
         const uploadActImg = (e, actIdx) => {
             const file = e.target.files[0];
             if (file && currentTrip.value.days[curDay.value].activities[actIdx].photos.length < 3) {
@@ -252,19 +260,25 @@ createApp({
             }
         };
 
-        const uploadVaultImg = (e, key) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => { currentTrip.value.vault[key].push(ev.target.result); };
-                reader.readAsDataURL(file);
+        // 文件備份專用：一次選多張
+        const uploadVaultImgs = (e, key) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => { currentTrip.value.vault[key].push(ev.target.result); };
+                    reader.readAsDataURL(file);
+                });
             }
         };
 
-        const saveData = () => { localStorage.setItem('travel_v4_data', JSON.stringify(allTrips.value)); alert('💾 已存檔'); };
+        const deleteTrip = () => { if(confirm('確定刪除？')) { delete allTrips.value[currentTripId.value]; currentTripId.value = null; saveData(); } };
+        const addDay = () => { currentTrip.value.days.push({activities:[]}); curDay.value = currentTrip.value.days.length - 1; };
+        const addAct = () => { currentTrip.value.days[curDay.value].activities.push({time:'', loc:'', note:'', photos:[]}); };
+        const saveData = () => { localStorage.setItem('travel_v4_3_data', JSON.stringify(allTrips.value)); alert('💾 數據已存檔'); };
         const openImg = (url) => { const n = window.open(); n.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center"><img src="${url}" style="max-width:100%"></body>`); };
 
-        return { currentTripId, allTrips, currentTrip, tab, tabs, curDay, vaultCategories, openTrip, createNewTrip, copyPreviousPacks, deleteTrip, addDay, addAct, uploadActImg, uploadVaultImg, saveData, openImg };
+        return { currentTripId, allTrips, currentTrip, tab, tabs, curDay, vaultCategories, openTrip, createNewTrip, copyPreviousPacks, deleteTrip, addDay, addAct, uploadActImg, uploadVaultImgs, saveData, openImg };
     }
 }).mount('#app');
 </script>
