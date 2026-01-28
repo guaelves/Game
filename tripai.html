@@ -3,261 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>慢旅日記 | AI </title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <title>慢旅日記 | AI 導入版</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap');
-        [v-cloak] { display: none; }
-        body { font-family: 'Noto Serif TC', serif; background-color: #f4f1ee; color: #1e293b; }
-        .card-elegant { background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(100, 116, 139, 0.4); border-radius: 1rem; }
-        .tab-active { border-bottom: 2px solid #1e293b; color: #000; font-weight: 700; }
-        th, td { border: 1px solid #e2e8f0; padding: 6px; text-align: center; font-size: 11px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        :root { --primary: #2c3e50; --bg: #f8f9fa; --card: #ffffff; }
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background: var(--bg); margin: 0; color: #333; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 500px; margin: 0 auto; background: var(--card); min-height: 100vh; position: relative; box-shadow: 0 0 15px rgba(0,0,0,0.05); }
+        header { padding: 20px 20px 10px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff; z-index: 100; }
+        .nav-tabs { display: flex; overflow-x: auto; gap: 15px; margin-top: 15px; border-bottom: 1px solid #f0f0f0; }
+        .tab { white-space: nowrap; color: #999; cursor: pointer; font-size: 14px; font-weight: bold; padding: 10px 5px; border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .content { padding: 15px; padding-bottom: 80px; }
+        .card { border: 1px solid #eee; border-radius: 12px; padding: 15px; margin-bottom: 15px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        input, textarea { width: 100%; border: 1px solid #eee; padding: 10px; box-sizing: border-box; border-radius: 8px; font-size: 14px; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th, td { border: 1px solid #f0f0f0; padding: 8px; text-align: center; }
+        .day-nav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 15px; padding: 5px 0; }
+        .day-btn { min-width: 42px; height: 42px; border-radius: 50%; border: 1px solid #ddd; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .day-btn.active { background: var(--primary); color: white; border: none; }
+        /* 圖片方框樣式 */
+        .upload-box { border: 2px dashed #ccd0d5; border-radius: 10px; padding: 20px; text-align: center; color: #999; cursor: pointer; margin: 10px 0; transition: 0.3s; }
+        .upload-box:hover { background: #f0f2f5; border-color: var(--primary); }
+        .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 1; }
+        .thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid #eee; }
+        .del-img { position: absolute; top: -5px; right: -5px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; border: none; cursor: pointer; }
+        .btn { border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-save { background: #27ae60; color: white; }
+        .btn-add { background: var(--primary); color: white; width: 100%; padding: 15px; margin-top: 10px; }
+        .hidden { display: none; }
+        .pack-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
+        .pack-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
     </style>
 </head>
-<body class="bg-[#f4f1ee]">
+<body>
 
-<div id="app" v-cloak class="max-w-md mx-auto min-h-screen flex flex-col bg-[#fdfaf7] shadow-2xl relative">
-    
-    <div v-if="!currentTripId && !showAiGenerator" class="p-8 space-y-8">
+<div class="container" id="app">
+    <div id="view-list">
+        <header><h1>慢旅日記</h1><p style="color:#999; font-size:11px;">AI 導入版</p></header>
+        <div class="content" id="trip-list-container"></div>
+        <div style="padding:20px;"><button class="btn btn-add" onclick="createNewTrip()">+ 建立新行程</button></div>
+    </div>
+
+    <div id="view-detail" class="hidden">
         <header>
-            <h1 class="text-3xl font-bold tracking-widest">我的旅程</h1>
-            <p class="text-[10px] text-slate-500 mt-2 font-bold tracking-widest uppercase">AI Route Planner V5.2</p>
-        </header>
-        
-        <button @click="showAiGenerator = true" class="w-full py-8 bg-slate-800 rounded-2xl text-white font-bold shadow-xl flex flex-col items-center border-b-4 border-slate-900 active:translate-y-1">
-            <span class="text-lg">✨ AI 智能路順規劃</span>
-            <span class="text-[10px] opacity-80 mt-1">輸入地點，自動判斷區域與路順</span>
-        </button>
-
-        <div class="space-y-4">
-            <div v-for="(trip, id) in allTrips" :key="id" 
-                class="card-elegant p-6 flex justify-between items-center cursor-pointer border-l-8 border-l-slate-600 relative group">
-                <div @click="openTrip(id)" class="flex-1">
-                    <h2 class="text-lg font-bold">{{ trip.info.title }}</h2>
-                    <p class="text-xs text-slate-500">{{ trip.days.length }} Days Trip</p>
-                </div>
-                <div class="flex items-center gap-4">
-                    <button @click.stop="deleteTrip(id)" class="text-red-400 hover:text-red-600 text-sm p-2">
-                        🗑️
-                    </button>
-                    <span class="text-slate-300" @click="openTrip(id)">❯</span>
-                </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button onclick="showList()" style="border:none; background:none; font-size:20px; color:#999;">❮</button>
+                <button class="btn btn-save" onclick="saveAll()">💾 存檔</button>
             </div>
-        </div>
-    </div>
-
-    <div v-if="showAiGenerator" class="p-8 space-y-6">
-        <button @click="showAiGenerator = false" class="text-slate-500 text-sm font-bold">❮ 返回</button>
-        <h2 class="text-2xl font-bold">AI 智能規劃引擎</h2>
-        <div class="space-y-5">
-            <div>
-                <label class="text-xs font-bold text-slate-400">目的地與天數</label>
-                <div class="flex gap-2 mt-1">
-                    <input v-model="aiForm.city" class="flex-1 p-3 border rounded-xl bg-white" placeholder="城市(如:大阪)">
-                    <input type="number" v-model="aiForm.days" class="w-20 p-3 border rounded-xl bg-white text-center" placeholder="天數">
-                </div>
+            <div class="nav-tabs">
+                <div class="tab active" onclick="switchTab('info', this)">✈️ 概覽</div>
+                <div class="tab" onclick="switchTab('plan', this)">📍 行程</div>
+                <div class="tab" onclick="switchTab('vault', this)">📂 文件</div>
+                <div class="tab" onclick="switchTab('pack', this)">🎒 行李</div>
             </div>
-            <div>
-                <label class="text-xs font-bold text-slate-400">想去的地點 (選填，若空白則自動推薦)</label>
-                <textarea v-model="aiForm.wishlist" class="w-full p-3 border rounded-xl bg-white mt-1 text-sm" rows="5" placeholder="例如：環球影城、清水寺、心齋橋..."></textarea>
-            </div>
-            <button @click="generateTrip" class="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg">🚀 判斷路順並生成行程</button>
-        </div>
-    </div>
-
-    <template v-if="currentTripId">
-        <header class="pt-10 pb-4 px-8 sticky top-0 z-50 bg-[#fdfaf7]/95 backdrop-blur-md border-b">
-            <div class="flex justify-between items-center mb-6">
-                <button @click="currentTripId = null" class="text-xs font-bold text-slate-500">❮ 返回</button>
-                <button @click="saveData" class="text-xs font-bold text-emerald-700 underline">💾 儲存所有變更</button>
-            </div>
-            <nav class="flex overflow-x-auto gap-5 no-scrollbar text-xs">
-                <button v-for="(label, key) in tabs" :key="key" @click="tab = key" :class="tab === key ? 'tab-active' : ''"
-                    class="pb-2 whitespace-nowrap font-bold text-slate-500">{{ label }}</button>
-            </nav>
         </header>
 
-        <main class="flex-1 px-4 pb-24 mt-4 overflow-y-auto">
-            <div v-if="tab === 'info'" class="space-y-4">
-                <div class="card-elegant p-4">
-                    <label class="text-[10px] text-slate-400 font-bold uppercase">旅程名稱</label>
-                    <input v-model="currentTrip.info.title" class="w-full font-bold outline-none">
-                </div>
-                <div class="card-elegant p-4">
-                    <label class="text-[10px] text-slate-400 font-bold mb-2 block uppercase">✈️ 航班明細 FLIGHT</label>
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr><th>行程</th><th>日期</th><th>時間</th><th>航班</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="f in ['go', 'back']" :key="f">
-                                <td class="font-bold text-slate-500">{{ f==='go'?'去程':'回程' }}</td>
-                                <td><input v-model="currentTrip.flightData[f].date" class="w-full text-center text-[10px]"></td>
-                                <td><input v-model="currentTrip.flightData[f].time" class="w-full text-center text-[10px]"></td>
-                                <td><input v-model="currentTrip.flightData[f].no" class="w-full text-center text-[10px]"></td>
-                            </tr>
-                        </tbody>
+        <div class="content">
+            <div id="tab-info">
+                <div class="card"><label style="font-size:12px; color:#999;">行程標題</label><input type="text" id="info-title"></div>
+                <div class="card">
+                    <label style="font-size:12px; color:#999;">✈️ 航班/交通</label>
+                    <table>
+                        <tr style="background:#f9f9f9;"><th>行程</th><th>日期</th><th>時間</th><th>備註/航班</th></tr>
+                        <tr><td>去程</td><td><input type="text" id="f-go-d"></td><td><input type="text" id="f-go-t"></td><td><input type="text" id="f-go-n"></td></tr>
+                        <tr><td>回程</td><td><input type="text" id="f-bk-d"></td><td><input type="text" id="f-bk-t"></td><td><input type="text" id="f-bk-n"></td></tr>
                     </table>
                 </div>
-                <div class="card-elegant p-4">
-                    <label class="text-[10px] text-slate-400 font-bold uppercase">🏨 飯店細節</label>
-                    <textarea v-model="currentTrip.info.hotel" class="w-full text-sm font-bold mt-1 outline-none" rows="3"></textarea>
-                </div>
+                <div class="card"><label style="font-size:12px; color:#999;">🏨 住宿與飯店備註</label><textarea id="info-hotel" rows="4"></textarea></div>
             </div>
 
-            <div v-if="tab === 'plan'" class="space-y-4">
-                <div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
-                    <button v-for="(day, i) in currentTrip.days" @click="curDay = i"
-                        :class="curDay === i ? 'bg-slate-800 text-white' : 'bg-stone-200'"
-                        class="flex-shrink-0 w-10 h-10 rounded-full text-xs font-bold">D{{i+1}}</button>
+            <div id="tab-plan" class="hidden">
+                <div class="card" style="background:#2c3e50; color:white;">
+                    <div style="font-size:12px; margin-bottom:8px;">✨ 全行程 AI 導入 (括號內容自動歸入備註)</div>
+                    <textarea id="ai-input" rows="4" style="background:#3e4f5f; border:none; color:white;" placeholder="Day 1&#10;10:00 東京車站 (拍照景點)"></textarea>
+                    <button class="btn" onclick="processAI()" style="width:100%; margin-top:10px; background:#27ae60; color:white;">解析並同步航班</button>
                 </div>
-                <div v-for="(act, idx) in currentTrip.days[curDay].activities" :key="idx" class="card-elegant p-4 relative">
-                    <button @click="currentTrip.days[curDay].activities.splice(idx, 1)" class="absolute top-2 right-2 text-slate-300">✕</button>
-                    <div class="flex items-center gap-2 mb-2">
-                        <input v-model="act.time" class="w-12 text-sm font-bold" placeholder="00:00">
-                        <input v-model="act.loc" class="flex-1 font-bold border-b text-sm" placeholder="地點名稱">
-                    </div>
-                    <div v-if="act.loc" class="mb-2">
-                        <a :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(act.loc)" target="_blank" class="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-1 rounded border border-blue-100">📍 在地圖中開啟 Google Map</a>
-                    </div>
-                    <textarea v-model="act.note" class="w-full text-[11px] text-slate-500 bg-stone-50 p-2 rounded" rows="1" placeholder="備註..."></textarea>
-                </div>
-                <button @click="addAct" class="w-full py-4 border-2 border-dashed rounded-xl text-slate-400 text-xs">+ 新增活動項目</button>
+                <div class="day-nav" id="day-nav"></div>
+                <div id="plan-list"></div>
+                <button class="btn" onclick="addAct()" style="width:100%; background:#f0f0f0; color:#666;">+ 手動新增項目</button>
             </div>
 
-            <div v-if="tab === 'vault'" class="space-y-6">
-                <div v-for="cat in vaultCategories" :key="cat.key" class="space-y-3">
-                    <h3 class="text-xs font-bold text-slate-500 border-l-4 pl-2 border-slate-400">{{ cat.label }}</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div v-for="(img, ii) in currentTrip.vault[cat.key]" :key="ii" class="relative">
-                            <img :src="img" class="w-full aspect-video object-cover rounded-lg">
-                            <button @click="currentTrip.vault[cat.key].splice(ii,1)" class="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 text-xs">✕</button>
-                        </div>
-                        <label class="aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center bg-white cursor-pointer text-slate-400">
-                            <span class="text-lg">+</span>
-                            <span class="text-[9px]">連選多張</span>
-                            <input type="file" class="hidden" accept="image/*" multiple @change="uploadVaultImgs($event, cat.key)">
-                        </label>
-                    </div>
-                </div>
-            </div>
+            <div id="tab-vault" class="hidden"><div id="vault-list"></div></div>
 
-            <div v-if="tab === 'pack'" class="space-y-4">
-                <div v-for="(items, category) in currentTrip.packs" :key="category" class="card-elegant p-4">
-                    <h4 class="text-xs font-bold text-slate-500 mb-2 border-b">{{ category }}</h4>
-                    <div v-for="(p, i) in items" :key="i" class="flex items-center gap-2 py-1">
-                        <input type="checkbox" v-model="p.done">
-                        <input v-model="p.text" class="flex-1 text-sm font-bold outline-none" :class="p.done?'line-through text-slate-300':''">
-                        <button @click="items.splice(i,1)" class="text-slate-300">✕</button>
-                    </div>
-                    <button @click="items.push({text:'', done:false})" class="mt-2 text-[10px] text-blue-500">+ 新增項目</button>
-                </div>
-            </div>
-        </main>
-    </template>
+            <div id="tab-pack" class="hidden"><div id="pack-list"></div></div>
+        </div>
+    </div>
 </div>
 
 <script>
-const { createApp, ref, computed, onMounted } = Vue;
+    let trips = JSON.parse(localStorage.getItem('travel_v8_local')) || {};
+    let curId = null, curDay = 0;
 
-createApp({
-    setup() {
-        const currentTripId = ref(null);
-        const allTrips = ref({});
-        const tab = ref('info');
-        const curDay = ref(0);
-        const showAiGenerator = ref(false);
-        const aiForm = ref({ city: '大阪', days: 4, wishlist: '' });
+    const defaultPackSetup = {
+        "証件類/貨幣": ["護照", "身份證", "日幣", "台幣", "信用卡", "車票", "西瓜卡"],
+        "個人用品": ["保養品", "護唇膏", "日拋隱眼", "眼鏡盒", "水壺", "背包", "溼紙巾", "面紙", "自拍棒", "衣物"],
+        "3C用品": ["手機", "行動電源", "耳機", "充電線", "排插"],
+        "其他": ["駕照譯本文件", "預約機場接送"]
+    };
+    const defaultVaultCats = ["機票文件", "飯店文件", "VJW申請", "保險", "各景點門票"];
 
-        const tabs = { info: '概覽/航班', plan: '日遊規劃', vault: '文件備份', pack: '行李清單' };
-        const vaultCategories = [{label:'機票文件', key:'flight'}, {label:'飯店文件', key:'hotel'}, {label:'憑證/VJW', key:'vjw'}];
-
-        const geoDb = {
-            '京都': ['清水寺', '伏見', '稻荷', '嵐山', '金閣寺', '祇園', '河原町', '二條城'],
-            '環球': ['環球影城', 'USJ', '瑪利歐', '哈利波特'],
-            '神戶': ['神戶', '北野異人館', '六甲山', '有馬溫泉'],
-            '奈良': ['奈良', '鹿', '東大寺', '春日大社'],
-            '市區': ['心齋橋', '道頓堀', '黑門市場', '通天閣', '大阪城', '梅田', '藍天大廈']
-        };
-
-        const currentTrip = computed(() => allTrips.value[currentTripId.value]);
-
-        const generateTrip = () => {
-            const id = 'trip_' + Date.now();
-            const daysCount = parseInt(aiForm.value.days);
-            const daysArr = Array.from({length: daysCount}, () => ({ activities: [] }));
-            
-            let items = aiForm.value.wishlist.split(/[，,、\s\n]+/).filter(i => i.trim());
-            if (items.length === 0 && aiForm.value.city.includes('大阪')) {
-                items = ['黑門市場', '大阪城', '心齋橋', '環球影城', '清水寺', '伏見稻荷大社', '奈良公園', '梅田藍天大廈'];
-            }
-
-            items.forEach((item) => {
-                let dIdx = 0;
-                if (geoDb['京都'].some(k => item.includes(k))) dIdx = Math.min(1, daysCount-1);
-                else if (geoDb['環球'].some(k => item.includes(k))) dIdx = Math.min(2, daysCount-1);
-                else if (geoDb['奈良'].some(k => item.includes(k))) dIdx = Math.min(3, daysCount-1);
-                else dIdx = 0;
-
-                daysArr[dIdx].activities.push({ time: '10:00', loc: item, note: 'AI 建議行程' });
-            });
-
-            allTrips.value[id] = {
-                info: { title: `${aiForm.value.city}${daysCount}日遊`, hotel: '' },
-                flightData: { go: {date:'',time:'',no:''}, back: {date:'',time:'',no:''} },
-                days: daysArr,
-                vault: { flight: [], hotel: [], vjw: [] },
-                packs: { '必備證件': [{text:'護照',done:false}, {text:'日幣',done:false}], '個人用品': [{text:'衣物',done:false}] }
-            };
-            currentTripId.value = id;
-            showAiGenerator.value = false;
-            saveDataSilent();
-        };
-
-        onMounted(() => {
-            const saved = localStorage.getItem('travel_v5_2_geo');
-            if (saved) allTrips.value = JSON.parse(saved);
-        });
-
-        const uploadVaultImgs = (e, key) => {
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (ev) => currentTrip.value.vault[key].push(ev.target.result);
-                reader.readAsDataURL(file);
-            });
-        };
-
-        const openTrip = (id) => { currentTripId.value = id; tab.value = 'info'; };
-        const addAct = () => currentTrip.value.days[curDay.value].activities.push({time:'', loc:'', note:''});
-        
-        // 刪除行程功能
-        const deleteTrip = (id) => {
-            if (confirm('確定要刪除這筆行程嗎？刪除後無法還原。')) {
-                delete allTrips.value[id];
-                saveDataSilent();
-            }
-        };
-
-        // 靜默儲存（不跳提示）
-        const saveDataSilent = () => {
-            localStorage.setItem('travel_v5_2_geo', JSON.stringify(allTrips.value));
-        };
-
-        // 帶提示的儲存
-        const saveData = () => { 
-            saveDataSilent();
-            alert('💾 數據已存檔'); 
-        };
-
-        return { 
-            currentTripId, allTrips, currentTrip, tab, tabs, curDay, 
-            showAiGenerator, aiForm, vaultCategories, openTrip, 
-            generateTrip, uploadVaultImgs, addAct, saveData, deleteTrip 
-        };
+    function renderTripList() {
+        const c = document.getElementById('trip-list-container'); c.innerHTML = '';
+        for(let id in trips) {
+            const d = document.createElement('div'); d.className = 'card'; d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center';
+            d.innerHTML = `<div onclick="openTrip('${id}')" style="flex:1; cursor:pointer;"><strong>${trips[id].title}</strong><div style="font-size:11px; color:#999; margin-top:4px;">${trips[id].days.length} 天</div></div><button onclick="delTrip('${id}')" style="border:none; color:#ccc; background:none; font-size:18px;">✕</button>`;
+            c.appendChild(d);
+        }
     }
-}).mount('#app');
+
+    function createNewTrip() {
+        const id = 't'+Date.now();
+        trips[id] = { title: '我的日本之旅', hotel: '', flight: {go:{}, bk:{}}, days: [{acts:[]}], vault: {}, packs: {} };
+        defaultVaultCats.forEach(v => trips[id].vault[v] = []);
+        for(let cat in defaultPackSetup) trips[id].packs[cat] = defaultPackSetup[cat].map(item => ({t:item, d:false}));
+        curId = id; showDetail();
+    }
+
+    function processAI() {
+        const txt = document.getElementById('ai-input').value; if(!txt) return;
+        const lines = txt.split('\n'); let newDays = [], dIdx = -1;
+        lines.forEach(l => {
+            const raw = l.trim(); if(!raw) return;
+            if(raw.match(/(Day\s*\d+|第\s*.*\s*天|D\d+)/i)) { dIdx++; newDays[dIdx] = {acts:[]}; }
+            else {
+                if(dIdx === -1) { dIdx=0; newDays[dIdx]={acts:[]}; }
+                let time = (raw.match(/^(\d{1,2}[:：]\d{2})/) || ["",""])[1];
+                let content = raw.replace(time, '').trim();
+                let note = (content.match(/\(([^)]+)\)/) || ["",""])[1];
+                let loc = content.replace(/\([^)]+\)/, '').trim().replace(/^[-:： ]+/, '');
+                newDays[dIdx].acts.push({ time, loc, note, imgs: [] });
+                // 航班同步
+                if(loc.includes("機場")) {
+                    if(dIdx === 0) { trips[curId].flight.go = { d: "Day 1", t: time, n: loc }; }
+                    else if(dIdx >= newDays.length - 1) { trips[curId].flight.bk = { d: `Day ${dIdx+1}`, t: time, n: loc }; }
+                }
+            }
+        });
+        trips[curId].days = newDays; curDay = 0; renderPlan(); fillInfo(); alert('✨ 行程與航班已同步！');
+    }
+
+    function renderPlan() {
+        const nav = document.getElementById('day-nav'); nav.innerHTML = '';
+        trips[curId].days.forEach((_, i) => {
+            const b = document.createElement('div'); b.className = `day-btn ${i===curDay?'active':''}`; b.innerText = `D${i+1}`;
+            b.onclick = () => { curDay = i; renderPlan(); }; nav.appendChild(b);
+        });
+        const list = document.getElementById('plan-list'); list.innerHTML = '';
+        trips[curId].days[curDay].acts.forEach((a, i) => {
+            const d = document.createElement('div'); d.className = 'card';
+            d.innerHTML = `
+                <div style="display:flex; gap:8px"><input style="width:65px; font-weight:bold" value="${a.time}" placeholder="時間" onchange="trips[curId].days[curDay].acts[${i}].time=this.value">
+                <input style="flex:1; font-weight:bold" value="${a.loc}" placeholder="景點地點" onchange="trips[curId].days[curDay].acts[${i}].loc=this.value">
+                <button onclick="trips[curId].days[curDay].acts.splice(${i},1);renderPlan()" style="border:none;background:none;color:#ddd">✕</button></div>
+                <textarea placeholder="點此輸入備註..." onchange="trips[curId].days[curDay].acts[${i}].note=this.value">${a.note || ''}</textarea>
+                <div class="upload-box" onclick="document.getElementById('file-${i}').click()">📷 加入照片 (可多選)</div>
+                <input type="file" id="file-${i}" class="hidden" multiple accept="image/*" onchange="handleImgs(this, ${i})">
+                <div class="preview-grid" id="pre-${i}"></div>
+                <a style="font-size:11px; color:#2980b9; text-decoration:none; font-weight:bold; margin-top:10px; display:inline-block;" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.loc)}" target="_blank">📍 Google Map</a>`;
+            list.appendChild(d);
+            renderImgs(i);
+        });
+    }
+
+    function handleImgs(input, actIdx) {
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => { trips[curId].days[curDay].acts[actIdx].imgs.push(e.target.result); renderImgs(actIdx); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderImgs(actIdx) {
+        const grid = document.getElementById(`pre-${actIdx}`); if(!grid) return;
+        grid.innerHTML = '';
+        trips[curId].days[curDay].acts[actIdx].imgs.forEach((src, imgIdx) => {
+            const w = document.createElement('div'); w.className = 'thumb-wrap';
+            w.innerHTML = `<img src="${src}" class="thumb" onclick="window.open().document.write('<img src=\\'${src}\\' style=\\'width:100%\\'>')"><button class="del-img" onclick="trips[curId].days[curDay].acts[${actIdx}].imgs.splice(${imgIdx},1);renderImgs(${actIdx})">✕</button>`;
+            grid.appendChild(w);
+        });
+    }
+
+    function renderPack() {
+        const h = document.getElementById('pack-list'); h.innerHTML = '';
+        for(let cat in trips[curId].packs) {
+            const d = document.createElement('div'); d.className = 'card';
+            d.innerHTML = `<div style="font-weight:bold; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">${cat}</div>`;
+            trips[curId].packs[cat].forEach((p, i) => {
+                const row = document.createElement('div'); row.className = 'pack-item';
+                row.innerHTML = `<input type="checkbox" ${p.d?'checked':''} onchange="trips[curId].packs['${cat}'][${i}].d=this.checked"><input style="border:none; padding:2px" value="${p.t}" onchange="trips[curId].packs['${cat}'][${i}].t=this.value"><span onclick="trips[curId].packs['${cat}'].splice(${i},1);renderPack()" style="color:#ccc; margin-left:auto">✕</span>`;
+                d.appendChild(row);
+            });
+            d.innerHTML += `<button onclick="trips[curId].packs['${cat}'].push({t:'',d:false});renderPack()" style="width:100%; border:1px dashed #ddd; background:none; padding:5px; margin-top:10px; border-radius:5px; color:#999; font-size:12px;">+ 新增項目</button>`;
+            h.appendChild(d);
+        }
+    }
+
+    function renderVault() {
+        const h = document.getElementById('vault-list'); h.innerHTML = '';
+        for(let cat in trips[curId].vault) {
+            const d = document.createElement('div'); d.className = 'card';
+            d.innerHTML = `<div style="font-weight:bold; margin-bottom:10px;">${cat}</div><div class="upload-box" onclick="document.getElementById('vault-file-${cat}').click()">📎 上傳文件截圖</div><input type="file" id="vault-file-${cat}" class="hidden" multiple onchange="handleVault('${cat}', this)"><div class="preview-grid" id="vault-pre-${cat}"></div>`;
+            h.appendChild(d);
+            const grid = document.getElementById(`vault-pre-${cat}`);
+            trips[curId].vault[cat].forEach((src, imgIdx) => {
+                const w = document.createElement('div'); w.className = 'thumb-wrap';
+                w.innerHTML = `<img src="${src}" class="thumb" onclick="window.open().document.write('<img src=\\'${src}\\' style=\\'width:100%\\'>')"><button class="del-img" onclick="trips[curId].vault['${cat}'].splice(${imgIdx},1);renderVault()">✕</button>`;
+                grid.appendChild(w);
+            });
+        }
+    }
+
+    function handleVault(cat, input) {
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => { trips[curId].vault[cat].push(e.target.result); renderVault(); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function fillInfo() {
+        const t = trips[curId]; document.getElementById('info-title').value = t.title; document.getElementById('info-hotel').value = t.hotel;
+        document.getElementById('f-go-d').value = t.flight.go.d || ''; document.getElementById('f-go-t').value = t.flight.go.t || ''; document.getElementById('f-go-n').value = t.flight.go.n || '';
+        document.getElementById('f-bk-d').value = t.flight.bk.d || ''; document.getElementById('f-bk-t').value = t.flight.bk.t || ''; document.getElementById('f-bk-n').value = t.flight.bk.n || '';
+    }
+
+    function saveAll() {
+        const t = trips[curId]; t.title = document.getElementById('info-title').value; t.hotel = document.getElementById('info-hotel').value;
+        t.flight.go = { d: document.getElementById('f-go-d').value, t: document.getElementById('f-go-t').value, n: document.getElementById('f-go-n').value };
+        t.flight.bk = { d: document.getElementById('f-bk-d').value, t: document.getElementById('f-bk-t').value, n: document.getElementById('f-bk-n').value };
+        localStorage.setItem('travel_v8_local', JSON.stringify(trips)); alert('✅ 已存檔至手機！');
+    }
+
+    function switchTab(id, el) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); el.classList.add('active');
+        ['info', 'plan', 'vault', 'pack'].forEach(k => document.getElementById('tab-'+k).classList.add('hidden'));
+        document.getElementById('tab-'+id).classList.remove('hidden');
+        if(id==='pack') renderPack(); if(id==='vault') renderVault();
+    }
+
+    function openTrip(id) { curId = id; showDetail(); }
+    function delTrip(id) { if(confirm('確定要刪除整個行程嗎？')) { delete trips[id]; localStorage.setItem('travel_v8_local', JSON.stringify(trips)); renderTripList(); } }
+    function showDetail() { document.getElementById('view-list').classList.add('hidden'); document.getElementById('view-detail').classList.remove('hidden'); fillInfo(); renderPlan(); }
+    function showList() { document.getElementById('view-list').classList.remove('hidden'); document.getElementById('view-detail').classList.add('hidden'); renderTripList(); }
+    function addAct() { trips[curId].days[curDay].acts.push({time:'', loc:'', note:'', imgs:[]}); renderPlan(); }
+
+    renderTripList();
 </script>
 </body>
 </html>
