@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>慢旅日記 | AI 智圖導航版 V5.2</title>
+    <title>慢旅日記 | AI </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -32,13 +32,18 @@
         </button>
 
         <div class="space-y-4">
-            <div v-for="(trip, id) in allTrips" :key="id" @click="openTrip(id)"
-                class="card-elegant p-6 flex justify-between items-center cursor-pointer border-l-8 border-l-slate-600">
-                <div>
+            <div v-for="(trip, id) in allTrips" :key="id" 
+                class="card-elegant p-6 flex justify-between items-center cursor-pointer border-l-8 border-l-slate-600 relative group">
+                <div @click="openTrip(id)" class="flex-1">
                     <h2 class="text-lg font-bold">{{ trip.info.title }}</h2>
                     <p class="text-xs text-slate-500">{{ trip.days.length }} Days Trip</p>
                 </div>
-                <span class="text-slate-300">❯</span>
+                <div class="flex items-center gap-4">
+                    <button @click.stop="deleteTrip(id)" class="text-red-400 hover:text-red-600 text-sm p-2">
+                        🗑️
+                    </button>
+                    <span class="text-slate-300" @click="openTrip(id)">❯</span>
+                </div>
             </div>
         </div>
     </div>
@@ -169,7 +174,6 @@ createApp({
         const tabs = { info: '概覽/航班', plan: '日遊規劃', vault: '文件備份', pack: '行李清單' };
         const vaultCategories = [{label:'機票文件', key:'flight'}, {label:'飯店文件', key:'hotel'}, {label:'憑證/VJW', key:'vjw'}];
 
-        // 內建地理資料庫 (用於路順判斷)
         const geoDb = {
             '京都': ['清水寺', '伏見', '稻荷', '嵐山', '金閣寺', '祇園', '河原町', '二條城'],
             '環球': ['環球影城', 'USJ', '瑪利歐', '哈利波特'],
@@ -185,19 +189,17 @@ createApp({
             const daysCount = parseInt(aiForm.value.days);
             const daysArr = Array.from({length: daysCount}, () => ({ activities: [] }));
             
-            // 獲取許願清單，若空白則帶入預設大阪清單
             let items = aiForm.value.wishlist.split(/[，,、\s\n]+/).filter(i => i.trim());
             if (items.length === 0 && aiForm.value.city.includes('大阪')) {
                 items = ['黑門市場', '大阪城', '心齋橋', '環球影城', '清水寺', '伏見稻荷大社', '奈良公園', '梅田藍天大廈'];
             }
 
-            // 路順判斷分配
             items.forEach((item) => {
                 let dIdx = 0;
                 if (geoDb['京都'].some(k => item.includes(k))) dIdx = Math.min(1, daysCount-1);
                 else if (geoDb['環球'].some(k => item.includes(k))) dIdx = Math.min(2, daysCount-1);
                 else if (geoDb['奈良'].some(k => item.includes(k))) dIdx = Math.min(3, daysCount-1);
-                else dIdx = 0; // 預設第一天市區
+                else dIdx = 0;
 
                 daysArr[dIdx].activities.push({ time: '10:00', loc: item, note: 'AI 建議行程' });
             });
@@ -211,7 +213,7 @@ createApp({
             };
             currentTripId.value = id;
             showAiGenerator.value = false;
-            saveData();
+            saveDataSilent();
         };
 
         onMounted(() => {
@@ -229,9 +231,31 @@ createApp({
 
         const openTrip = (id) => { currentTripId.value = id; tab.value = 'info'; };
         const addAct = () => currentTrip.value.days[curDay.value].activities.push({time:'', loc:'', note:''});
-        const saveData = () => { localStorage.setItem('travel_v5_2_geo', JSON.stringify(allTrips.value)); alert('💾 數據已存檔'); };
+        
+        // 刪除行程功能
+        const deleteTrip = (id) => {
+            if (confirm('確定要刪除這筆行程嗎？刪除後無法還原。')) {
+                delete allTrips.value[id];
+                saveDataSilent();
+            }
+        };
 
-        return { currentTripId, allTrips, currentTrip, tab, tabs, curDay, showAiGenerator, aiForm, vaultCategories, openTrip, generateTrip, uploadVaultImgs, addAct, saveData };
+        // 靜默儲存（不跳提示）
+        const saveDataSilent = () => {
+            localStorage.setItem('travel_v5_2_geo', JSON.stringify(allTrips.value));
+        };
+
+        // 帶提示的儲存
+        const saveData = () => { 
+            saveDataSilent();
+            alert('💾 數據已存檔'); 
+        };
+
+        return { 
+            currentTripId, allTrips, currentTrip, tab, tabs, curDay, 
+            showAiGenerator, aiForm, vaultCategories, openTrip, 
+            generateTrip, uploadVaultImgs, addAct, saveData, deleteTrip 
+        };
     }
 }).mount('#app');
 </script>
