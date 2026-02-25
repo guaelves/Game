@@ -1,0 +1,22 @@
+{
+  "short_name": "牛奶追蹤",
+  "name": "牛奶兌換追蹤器",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#4a8fff",
+  "background_color": "#f8f9fa"
+}
