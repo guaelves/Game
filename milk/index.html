@@ -1,1 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026年2~7月 牛奶兌換追蹤</title>
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
+    <style>
+        :root { --primary: #4a8fff; --bg: #f8f9fa; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; }
+        .app-container { max-width: 650px; width: 100%; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        .btn-setup { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #fafafa; color: #666; font-size: 0.9em; }
+        .checkbox-cell { text-align: center; }
+        input[type="checkbox"] { width: 32px; height: 32px; cursor: pointer; vertical-align: middle; }
+        .note-input { width: 90%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .completed { background-color: #f1f8e9; color: #888; }
+        .completed .note-input { background-color: #f1f8e9; border-color: transparent; }
+        .current-week { border-left: 5px solid var(--primary); background-color: #e3f2fd; font-weight: bold; }
+    </style>
+</head>
+<body>
 
+<div class="app-container">
+    <h2>🥛 牛奶兌換追蹤 🥛</h2>
+    <button class="btn-setup" onclick="setupNotifications()">🔔 啟動智能提醒功能</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%;">編號</th>
+                <th style="width: 35%;">期間 (一~日)</th>
+                <th style="width: 35%;">領取日</th>
+                <th class="checkbox-cell">完成</th>
+            </tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const tableBody = document.getElementById('calendarBody');
+
+    // 1. 初始化列表 (2/23 開始)
+    function initCalendar() {
+        const startDate = new Date('2026-02-23');
+        const endDate = new Date('2026-06-30');
+        let current = new Date(startDate);
+        let bottleCount = 1;
+
+        while (current <= endDate) {
+            const mon = new Date(current);
+            const sun = new Date(current);
+            sun.setDate(mon.getDate() + 6);
+            const sunTime = new Date(sun);
+            sunTime.setHours(23,59,59,999);
+
+            const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
+            const isChecked = localStorage.getItem(weekId) === 'true';
+            const savedNote = localStorage.getItem(weekId + '-note') || '';
+            const isThisWeek = (new Date() >= mon && new Date() <= sunTime);
+
+            const row = document.createElement('tr');
+            row.id = `row-${weekId}`;
+            if (isChecked) row.className = 'completed';
+            if (isThisWeek) row.classList.add('current-week');
+
+            row.innerHTML = `
+                <td>第 ${bottleCount} 瓶</td>
+                <td>${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}</td>
+                <td>
+                    <input type="text" class="note-input" placeholder="勾選自動填入" 
+                           id="${weekId}-note" value="${savedNote}" 
+                           oninput="saveNote('${weekId}')">
+                </td>
+                <td class="checkbox-cell">
+                    <input type="checkbox" id="${weekId}" ${isChecked ? 'checked' : ''} 
+                           onchange="handleCheck('${weekId}', '${mon.toISOString()}', '${sunTime.toISOString()}')">
+                </td>
+            `;
+            tableBody.appendChild(row);
+            current.setDate(current.getDate() + 7);
+            bottleCount++;
+        }
+    }
+
+    // 2. 勾選邏輯：防誤觸 + 自動日期
+    function handleCheck(id, monISO, sunISO) {
+        const cb = document.getElementById(id);
+        const noteInput = document.getElementById(id + '-note');
+        const row = document.getElementById('row-' + id);
+        const now = new Date();
+
+        if (cb.checked) {
+            if (now < new Date(monISO) || now > new Date(sunISO)) {
+                alert('⚠️ 領取失敗：今天不在這瓶牛奶的兌換期間內！');
+                cb.checked = false;
+                return;
+            }
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()} 領取`;
+            if (noteInput.value.trim() === "") {
+                noteInput.value = dateStr;
+                localStorage.setItem(id + '-note', dateStr);
+            }
+            row.classList.add('completed');
+        } else {
+            row.classList.remove('completed');
+        }
+        localStorage.setItem(id, cb.checked);
+    }
+
+    function saveNote(id) {
+        localStorage.setItem(id + '-note', document.getElementById(id + '-note').value);
+    }
+
+    // 3. 智能提醒邏輯 (週一、三、五、六)
+    function runAutoReminders() {
+        if (Notification.permission !== 'granted') return;
+
+        const now = new Date();
+        const day = now.getDay(); // 0日, 1一...
+        const hour = now.getHours();
+
+        // 取得本週一 ID
+        const offset = (day === 0) ? -6 : 1 - day;
+        const mon = new Date(now);
+        mon.setDate(now.getDate() + offset);
+        const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
+        
+        const isChecked = localStorage.getItem(weekId) === 'true';
+        if (isChecked) return; // 換過了就不吵你
+
+        let msg = "";
+        const tag = `milk-${weekId}-${day}`; // 確保同日不重複跳出
+
+        if (day === 1 && hour >= 8 && hour < 10) msg = "🥛 新的一週！別忘了兌換本週牛奶。";
+        else if (day === 3 && hour >= 8 && hour < 10) msg = "⏳ 已經過三天囉，本週牛奶兌換了嗎？";
+        else if (day === 5 && hour >= 8 && hour < 10) msg = "⚠️ 剩兩天！快結束了還沒換喔！";
+        else if (day === 6 && hour >= 20) msg = "🚨 明天是最後一天！請務必前往兌換。";
+
+        if (msg) {
+            new Notification('牛奶兌換提醒', {
+                body: msg,
+                icon: 'https://cdn-icons-png.flaticon.com/512/372/372922.png',
+                tag: tag
+            });
+        }
+    }
+
+    async function setupNotifications() {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            alert('提醒功能啟動成功！');
+            runAutoReminders();
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+
+    initCalendar();
+    // 進入網頁立即檢查，並每小時檢查一次
+    runAutoReminders();
+    setInterval(runAutoReminders, 3600000);
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+// sw.js - 牛奶追蹤器離線控制
+const CACHE_NAME = 'milk-tracker-v6';
+const ASSETS = [
+  './',
+  './index.html'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((res) => res || fetch(event.request))
+  );
+});
