@@ -1,29 +1,28 @@
-// sw.js - 牛奶追蹤器 v8
-const CACHE_NAME = 'milk-tracker-v8';
-const ASSETS = [
-  './',
-  './index.html'
-];
+// sw.js - v11
+const CACHE_NAME = 'milk-tracker-v11';
+const ASSETS = ['./', './index.html'];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
-  self.skipWaiting();
+self.addEventListener('install', (e) => {
+    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
+    self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map((key) => {
-        if (key !== CACHE_NAME) return caches.delete(key);
-      }));
-    }).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', (e) => {
+    e.waitUntil(caches.keys().then(keys => Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    )).then(() => self.clients.claim()));
 });
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((res) => res || fetch(event.request))
-  );
+self.addEventListener('fetch', (e) => {
+    e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+});
+
+self.addEventListener('notificationclick', (e) => {
+    e.notification.close();
+    e.waitUntil(
+        clients.matchAll({ type: 'window' }).then(clients => {
+            if (clients.length > 0) return clients[0].focus();
+            return clients.openWindow('./');
+        })
+    );
 });

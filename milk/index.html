@@ -12,7 +12,7 @@
         :root { --primary: #4a8fff; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; margin: 0; }
         .app-container { max-width: 600px; width: 100%; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; margin-top: 0; }
+        h2 { text-align: center; color: #333; margin-top: 0; cursor: pointer; }
         .stats { background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; color: #1976d2; }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; text-align: center; }
@@ -35,7 +35,7 @@
 <body>
 
 <div class="app-container">
-    <h2>🥛 牛奶兌換追蹤 🥛</h2>
+    <h2 onclick="testInstant()">🥛 牛奶兌換追蹤 🥛</h2>
     <div id="statBox" class="stats">載入中...</div>
     
     <div class="btn-group">
@@ -142,46 +142,52 @@
         localStorage.setItem(id + '-note', document.getElementById(id + '-note').value);
     }
 
+    // 核心提醒邏輯：現在改為每小時提醒
     function runAutoReminders() {
         if (Notification.permission !== 'granted') return;
 
         const now = new Date();
-        const day = now.getDay(); // 0 是週日, 1-6 是週一到六
+        const day = now.getDay(); 
         const hour = now.getHours();
         
-        // 找到本週一的 ID
         const offset = (day === 0) ? -6 : 1 - day;
         const mon = new Date(now);
         mon.setDate(now.getDate() + offset);
         const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
         
-        // 如果當週已完成，直接結束
         if (localStorage.getItem(weekId) === 'true') return;
 
-        // 每天早上 9 點跟晚上 9 點提醒
-        if (hour === 9 || hour === 21) {
-            let msg = "";
-            const timeTag = hour === 9 ? "AM" : "PM";
-            const notificationTag = `milk-2026-${weekId}-${day}-${timeTag}`;
+        let msg = "";
+        const notificationTag = `milk-2026-${weekId}-${day}-${hour}`; // 每個小時不同的標籤
 
-            switch(day) {
-                case 1: msg = "🥛 新的一週開始！別忘了兌換本週牛奶。"; break;
-                case 2: msg = "🧪 又是美好的一天，順路去換瓶牛奶吧！"; break;
-                case 3: msg = "⏳ 小週末，牛奶領取了嗎？"; break;
-                case 4: msg = "📅 牛奶時間，記得去領牛奶喔！"; break;
-                case 5: msg = "⚠️ 倒數兩天！再不領就沒機會了！"; break;
-                case 6: msg = "🚨 明天最後一天！請務必前往兌換。"; break;
-                case 0: msg = "🔥 最後最後！本週牛奶要掰掰啦！"; break;
-            }
+        switch(day) {
+            case 1: msg = "🥛 新的一週開始！別忘了兌換本週牛奶。"; break;
+            case 2: msg = "🧪 又是美好的一天，順路去換瓶牛奶吧！"; break;
+            case 3: msg = "⏳ 小週末，牛奶領取了嗎？"; break;
+            case 4: msg = "📅 牛奶時間，記得去領牛奶喔！"; break;
+            case 5: msg = "⚠️ 倒數兩天！再不領就沒機會了！"; break;
+            case 6: msg = "🚨 明天最後一天！請務必前往兌換。"; break;
+            case 0: msg = "🔥 最後最後！本週牛奶要掰掰啦！"; break;
+        }
 
-            if (msg) {
-                new Notification('牛奶兌換提醒', {
+        if (msg && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification('牛奶兌換提醒', {
                     body: msg,
                     icon: 'https://cdn-icons-png.flaticon.com/512/372/372922.png',
                     tag: notificationTag,
                     requireInteraction: true
                 });
-            }
+            });
+        }
+    }
+
+    // 隱藏測試功能：點擊標題即可觸發即時通知（不限整點）
+    function testInstant() {
+        if (Notification.permission === 'granted') {
+            new Notification('🧪 測試通知', { body: '看到這個代表通知功能正常運作中！' });
+        } else {
+            alert('請先點擊藍色按鈕啟動提醒。');
         }
     }
 
@@ -213,7 +219,7 @@
     async function setupNotifications() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            alert('通知功能已啟動！每天 09:00 與 21:00 將提醒未領取的牛奶。');
+            alert('通知已啟動！未領取時將每小時提醒。');
             runAutoReminders();
         }
     }
@@ -224,8 +230,8 @@
 
     initCalendar();
     runAutoReminders();
-    // 每 30 分鐘檢查一次
-    setInterval(runAutoReminders, 1800000);
+    // 縮短檢查時間：每 5 分鐘檢查一次是否進入下一個整點
+    setInterval(runAutoReminders, 300000); 
 </script>
 </body>
 </html>
