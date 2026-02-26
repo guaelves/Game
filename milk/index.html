@@ -3,32 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 牛奶兌換追蹤器</title>
+    <title>牛奶兌換追蹤器</title>
     <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
     <style>
         :root { --primary: #4a8fff; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; margin: 0; }
         .app-container { max-width: 600px; width: 100%; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; margin-top: 0; cursor: pointer; user-select: none; }
+        h2 { text-align: center; color: #333; cursor: pointer; }
         .stats { background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; color: #1976d2; }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; text-align: center; }
+        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; text-align: center; }
         .btn-setup { background: var(--primary); color: white; grid-column: span 2; }
         .btn-export { background: #eee; color: #444; }
         .btn-import { background: #eee; color: #444; }
-        .btn:active { transform: scale(0.95); opacity: 0.8; }
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #eee; }
         table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #fafafa; color: #666; font-size: 0.85em; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid #eee; }
         .checkbox-cell { text-align: center; }
-        input[type="checkbox"] { width: 32px; height: 32px; cursor: pointer; }
+        input[type="checkbox"] { width: 32px; height: 32px; }
         .note-input { width: 90%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         .completed { background-color: #f1f8e9 !important; color: #888; }
-        .current-week { border-left: 5px solid var(--primary); background-color: #fffde7; font-weight: bold; }
+        .current-week { border-left: 5px solid var(--primary); background-color: #fffde7; }
         #fileInput { display: none; }
     </style>
 </head>
@@ -39,7 +36,7 @@
     <div id="statBox" class="stats">載入中...</div>
     
     <div class="btn-group">
-        <button class="btn btn-setup" onclick="setupNotifications()">🔔 啟動智能提醒功能</button>
+        <button class="btn btn-setup" onclick="setupNotifications()">🔔 啟動強效提醒</button>
         <button class="btn btn-export" onclick="exportData()">📤 匯出備份</button>
         <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📥 匯入備份</button>
         <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
@@ -48,12 +45,7 @@
     <div class="table-wrapper">
         <table>
             <thead>
-                <tr>
-                    <th style="width: 10%;">#</th>
-                    <th style="width: 40%;">領取區間</th>
-                    <th style="width: 35%;">備註</th>
-                    <th class="checkbox-cell">狀態</th>
-                </tr>
+                <tr><th style="width:10%">#</th><th style="width:40%">區間</th><th style="width:35%">備註</th><th class="checkbox-cell">狀態</th></tr>
             </thead>
             <tbody id="calendarBody"></tbody>
         </table>
@@ -61,16 +53,13 @@
 </div>
 
 <script>
-    // 診斷功能：連點標題 5 下測試通知權限
     let diagCount = 0;
     document.getElementById('appTitle').onclick = () => {
         diagCount++;
         if (diagCount >= 5) {
-            if (Notification.permission === 'granted') {
-                new Notification('⚙️ 系統診斷', { body: '通知權限正常！若背景收不到，請檢查手機電池優化設定。' });
-            } else {
-                alert('權限尚未開啟！請按藍色按鈕。');
-            }
+            navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification('🧪 診斷測試', { body: '核心管理員運作中！' });
+            });
             diagCount = 0;
         }
     };
@@ -79,12 +68,10 @@
         const startDate = new Date('2026-02-23');
         const endDate = new Date('2026-06-30');
         let current = new Date(startDate);
-        let bottleCount = 1;
-        let completedCount = 0;
-        let totalWeeks = 0;
-
+        let bottleCount = 1, completedCount = 0, totalWeeks = 0;
         const tableBody = document.getElementById('calendarBody');
         tableBody.innerHTML = '';
+
         while (current <= endDate) {
             const mon = new Date(current);
             const sun = new Date(current);
@@ -101,100 +88,58 @@
             totalWeeks++;
 
             const row = document.createElement('tr');
-            row.id = `row-${weekId}`;
             if (isChecked) row.className = 'completed';
             if (isThisWeek) row.classList.add('current-week');
 
             row.innerHTML = `
                 <td>${bottleCount}</td>
                 <td>${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}</td>
-                <td>
-                    <input type="text" class="note-input" placeholder="..." 
-                           id="${weekId}-note" value="${savedNote}" 
-                           oninput="localStorage.setItem('${weekId}-note', this.value)">
-                </td>
-                <td class="checkbox-cell">
-                    <input type="checkbox" id="${weekId}" ${isChecked ? 'checked' : ''} 
-                           onchange="handleCheck('${weekId}', '${mon.toISOString()}', '${sunTime.toISOString()}')">
-                </td>
+                <td><input type="text" class="note-input" id="${weekId}-note" value="${savedNote}" oninput="localStorage.setItem('${weekId}-note', this.value)"></td>
+                <td class="checkbox-cell"><input type="checkbox" id="${weekId}" ${isChecked ? 'checked' : ''} onchange="handleCheck('${weekId}', '${mon.toISOString()}', '${sunTime.toISOString()}')"></td>
             `;
             tableBody.appendChild(row);
             current.setDate(current.getDate() + 7);
             bottleCount++;
         }
         document.getElementById('statBox').innerText = `進度：已領 ${completedCount} / 剩餘 ${totalWeeks - completedCount} 瓶`;
+        syncToSW(); // 每次初始化都同步給 SW
     }
 
     function handleCheck(id, monISO, sunISO) {
         const cb = document.getElementById(id);
         const now = new Date();
         if (cb.checked && (now < new Date(monISO) || now > new Date(sunISO))) {
-            alert('⚠️ 領取失敗：今天不在兌換期間內！');
-            cb.checked = false; return;
+            alert('⚠️ 不在兌換期間內！'); cb.checked = false; return;
         }
         localStorage.setItem(id, cb.checked);
-        if (cb.checked) {
-            const noteVal = document.getElementById(id + '-note');
-            if (!noteVal.value) {
-                const dateStr = `${now.getMonth() + 1}/${now.getDate()} 領取`;
-                noteVal.value = dateStr;
-                localStorage.setItem(id + '-note', dateStr);
-            }
+        if (cb.checked && !document.getElementById(id + '-note').value) {
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()} 領取`;
+            document.getElementById(id + '-note').value = dateStr;
+            localStorage.setItem(id + '-note', dateStr);
         }
         initCalendar();
     }
 
-    function runAutoReminders() {
-        if (Notification.permission !== 'granted') return;
-        const now = new Date();
-        const day = now.getDay();
-        const hour = now.getHours();
-        
-        const offset = (day === 0) ? -6 : 1 - day;
-        const mon = new Date(now);
-        mon.setDate(now.getDate() + offset);
-        const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
-        
-        if (localStorage.getItem(weekId) === 'true') return;
-
-        const tag = `milk-2026-${weekId}-${day}-${hour}`;
-        const msgs = [
-            "🔥 最後最後！本週牛奶要掰掰啦！",
-            "🥛 新的一週開始！別忘了兌換本週牛奶。",
-            "🧪 又是美好的一天，順路去換瓶牛奶吧！",
-            "⏳ 小週末，牛奶領取了嗎？",
-            "📅 牛奶時間，記得去領牛奶喔！",
-            "⚠️ 倒數兩天！再不領就沒機會了！",
-            "🚨 明天最後一天！請務必前往兌換。"
-        ];
-        
-        // 強化：發送通知給 Service Worker 執行，增加存活率
+    function syncToSW() {
         if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(reg => {
-                reg.showNotification('牛奶兌換提醒', { 
-                    body: msgs[day], 
-                    tag: tag, 
-                    requireInteraction: true,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/372/372922.png'
-                });
-            });
+            const data = {};
+            Object.keys(localStorage).forEach(k => data[k] = localStorage.getItem(k));
+            navigator.serviceWorker.controller.postMessage({ type: 'SYNC_DATA', data: data });
         }
     }
 
     async function setupNotifications() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            alert('通知已啟動！請將此 App 「掛在背景」並在手機設定中關閉「電池最佳化」。');
-            runAutoReminders();
+            alert('強效提醒已啟動！請保持 App 在背景執行。');
+            syncToSW();
         }
     }
 
     function exportData() {
-        const blob = new Blob([JSON.stringify(localStorage)], {type: 'application/json'});
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `牛奶備份.json`;
-        a.click();
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(localStorage)], {type: 'application/json'}));
+        a.download = `牛奶備份.json`; a.click();
     }
 
     function importData(e) {
@@ -208,13 +153,10 @@
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.register('./sw.js').then(() => console.log('SW Registered'));
     }
 
     initCalendar();
-    runAutoReminders();
-    // 每 20 分鐘檢查一次，增加背景掃描到整點的機率
-    setInterval(runAutoReminders, 1200000); 
 </script>
 </body>
 </html>
