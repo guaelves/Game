@@ -10,39 +10,48 @@
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
     <style>
         :root { --primary: #4a8fff; --bg: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; margin: 0; }
-        .app-container { max-width: 600px; width: 100%; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        * { box-sizing: border-box; } /* 確保 padding 不會撐開寬度 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 10px; display: flex; justify-content: center; margin: 0; }
         
-        .phase-header { 
-            background: #666; color: white; padding: 10px 15px; 
-            border-radius: 6px; margin-top: 15px; font-size: 0.9em; 
-            font-weight: bold; cursor: pointer; display: flex; 
-            justify-content: space-between; align-items: center;
-        }
-        .phase-header:hover { background: #555; }
-        .phase-header::after { content: '▼'; font-size: 0.8em; transition: 0.3s; }
-        .phase-header.collapsed::after { content: '▲'; transform: rotate(180deg); }
-
-        .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .stats { background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center; font-weight: bold; color: #1976d2; font-size: 0.85em; }
+        .app-container { width: 100%; max-width: 500px; background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #333; margin: 0 0 15px 0; font-size: 1.4em; }
         
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; text-align: center; }
+        .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .stats { background: #e3f2fd; padding: 8px; border-radius: 8px; text-align: center; font-weight: bold; color: #1976d2; font-size: 0.75em; line-height: 1.4; }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .btn { padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; }
         .btn-export { background: #eee; color: #444; }
         .btn-import { background: #eee; color: #444; }
         
-        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #eee; transition: max-height 0.3s ease-out; overflow: hidden; }
+        .phase-header { 
+            background: #666; color: white; padding: 10px 12px; 
+            border-radius: 6px; margin-top: 10px; font-size: 0.85em; 
+            font-weight: bold; cursor: pointer; display: flex; 
+            justify-content: space-between; align-items: center;
+        }
+        .phase-header::after { content: '▼'; font-size: 0.7em; }
+        .phase-header.collapsed::after { content: '▲'; }
+
+        .table-wrapper { width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid #eee; margin-top: 2px; }
         .collapsed-content { display: none; }
         
-        table { width: 100%; border-collapse: collapse; min-width: 450px; }
-        th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #fafafa; color: #666; font-size: 0.85em; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; } /* 固定佈局防止撐開 */
+        th, td { padding: 8px 4px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        th { background: #fafafa; color: #777; font-size: 0.75em; }
+        
+        /* 欄位寬度比例分配 */
+        .col-id { width: 10%; text-align: center; }
+        .col-range { width: 42%; }
+        .col-note { width: 28%; }
+        .col-check { width: 20%; text-align: center; }
+
         .checkbox-cell { text-align: center; }
-        input[type="checkbox"] { width: 32px; height: 32px; cursor: pointer; }
-        .note-input { width: 90%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .completed { background-color: #f1f8e9 !important; color: #888; }
-        .current-week { border-left: 5px solid var(--primary); background-color: #fffde7; font-weight: bold; }
+        input[type="checkbox"] { width: 28px; height: 28px; vertical-align: middle; cursor: pointer; margin: 0; }
+        .note-input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; }
+        
+        .completed { background-color: #f1f8e9 !important; color: #999; }
+        .current-week { border-left: 4px solid var(--primary); background-color: #fffde7; font-weight: bold; }
         #fileInput { display: none; }
     </style>
 </head>
@@ -51,13 +60,13 @@
 <div class="app-container">
     <h2>🥛 牛奶兌換追蹤 🥛</h2>
     <div class="stats-container">
-        <div id="stat1" class="stats">第一階段：載入中...</div>
-        <div id="stat2" class="stats">第二階段：載入中...</div>
+        <div id="stat1" class="stats">第一階段：-</div>
+        <div id="stat2" class="stats">第二階段：-</div>
     </div>
     
     <div class="btn-group">
-        <button class="btn btn-export" onclick="exportData()">📤 匯出備份</button>
-        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📥 匯入備份</button>
+        <button class="btn btn-export" onclick="exportData()">📤 匯出</button>
+        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📥 匯入</button>
         <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
     </div>
 
@@ -101,42 +110,38 @@
 
                 weekData.push({
                     id: weekId,
-                    bottleNum: overallBottleCount++,
-                    range: `${mon.getFullYear()}/${mon.getMonth()+1}/${mon.getDate()} ~ ${sun.getFullYear()}/${sun.getMonth()+1}/${sun.getDate()}`,
+                    num: overallBottleCount++,
+                    range: `${mon.getMonth()+1}/${mon.getDate()} ~ ${sun.getMonth()+1}/${sun.getDate()}`,
                     note: savedNote,
                     checked: isChecked,
-                    isThisWeek: isThisWeek,
+                    current: isThisWeek,
                     monISO: mon.toISOString(),
                     sunISO: sunTime.toISOString()
                 });
                 current.setDate(current.getDate() + 7);
             }
 
-            // 修正統計文字顯示
-            const phaseLabel = phase.id === 1 ? "第一階段" : "第二階段";
-            document.getElementById(`stat${phase.id}`).innerText = `${phaseLabel}：已領 ${phaseCompleted}/${phaseTotal}`;
+            document.getElementById(`stat${phase.id}`).innerHTML = `第${['一','二'][phase.id-1]}階段<br>已領 ${phaseCompleted}/${phaseTotal}`;
 
             const phaseWrapper = document.createElement('div');
-            
-            const isPhaseFinished = (phaseCompleted === phaseTotal);
+            const isFinished = (phaseCompleted === phaseTotal);
             const isCollapsed = localStorage.getItem(`collapse-phase-${phase.id}`) === 'true' || (phase.id === 2 && phaseCompleted === 0);
             
             const header = document.createElement('div');
             header.className = `phase-header ${isCollapsed ? 'collapsed' : ''}`;
-            header.innerHTML = `<span>${phase.name} ${isPhaseFinished ? '✅' : ''}</span>`;
+            header.innerHTML = `<span>${phase.name} ${isFinished ? '✅' : ''}</span>`;
             header.onclick = () => togglePhase(phase.id);
 
             const tableWrapper = document.createElement('div');
-            tableWrapper.className = 'table-wrapper';
+            tableWrapper.className = `table-wrapper ${isCollapsed ? 'collapsed-content' : ''}`;
             tableWrapper.id = `table-phase-${phase.id}`;
-            if (isCollapsed) tableWrapper.classList.add('collapsed-content');
 
             let rowsHtml = weekData.map(w => `
-                <tr class="${w.checked ? 'completed' : ''} ${w.isThisWeek ? 'current-week' : ''}">
-                    <td>${w.bottleNum}</td>
-                    <td>${w.range}</td>
-                    <td><input type="text" class="note-input" value="${w.note}" oninput="saveNote('${w.id}', this.value)"></td>
-                    <td class="checkbox-cell">
+                <tr class="${w.checked ? 'completed' : ''} ${w.current ? 'current-week' : ''}">
+                    <td class="col-id">${w.num}</td>
+                    <td class="col-range">${w.range}</td>
+                    <td class="col-note"><input type="text" class="note-input" value="${w.note}" oninput="saveNote('${w.id}', this.value)"></td>
+                    <td class="col-check checkbox-cell">
                         <input type="checkbox" ${w.checked ? 'checked' : ''} onchange="handleCheck('${w.id}', '${w.monISO}', '${w.sunISO}')">
                     </td>
                 </tr>
@@ -144,7 +149,14 @@
 
             tableWrapper.innerHTML = `
                 <table>
-                    <thead><tr><th>#</th><th>領取期間</th><th>備註</th><th class="checkbox-cell">領取勾選</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th class="col-id">#</th>
+                            <th class="col-range">領取期間</th>
+                            <th class="col-note">備註</th>
+                            <th class="col-check">領取勾選</th>
+                        </tr>
+                    </thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>
             `;
@@ -166,19 +178,14 @@
     function handleCheck(id, monISO, sunISO) {
         const now = new Date();
         const isChecked = event.target.checked;
-
         if (isChecked && (now < new Date(monISO) || now > new Date(sunISO))) {
-            alert('⚠️ 領取失敗：今天不在該期間內！');
+            alert('⚠️ 不在該期間內！');
             event.target.checked = false;
             return;
         }
-
         localStorage.setItem(id, isChecked);
-        if (isChecked) {
-            const noteKey = id + '-note';
-            if (!localStorage.getItem(noteKey)) {
-                localStorage.setItem(noteKey, `${now.getMonth()+1}/${now.getDate()} 領取`);
-            }
+        if (isChecked && !localStorage.getItem(id + '-note')) {
+            localStorage.setItem(id + '-note', `${now.getMonth()+1}/${now.getDate()} 領取`);
         }
         initCalendar();
     }
@@ -191,7 +198,7 @@
         const blob = new Blob([JSON.stringify(localStorage)], {type: 'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `牛奶紀錄備份_${new Date().toLocaleDateString()}.json`;
+        a.download = `牛奶備份.json`;
         a.click();
     }
 
@@ -203,9 +210,8 @@
             try {
                 const data = JSON.parse(e.target.result);
                 Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
-                alert('匯入成功！');
                 location.reload();
-            } catch (err) { alert('檔案格式不正確'); }
+            } catch (err) { alert('匯入錯誤'); }
         };
         reader.readAsText(file);
     }
