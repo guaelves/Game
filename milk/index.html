@@ -9,25 +9,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
     <style>
-        :root { --primary: #4a8fff; --bg: #f8f9fa; --success: #4caf50; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; margin: 0; }
+        :root { --primary: #4a8fff; --bg: #f8f9fa; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; display: flex; justify-content: center; margin: 0; }
         .app-container { max-width: 600px; width: 100%; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; margin-top: 0; }
         .stats { background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-weight: bold; color: #1976d2; }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-setup { background: var(--primary); color: white; }
-        .btn-test { background: #eee; color: #666; }
-        .btn:active { transform: scale(0.95); }
+        .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; text-align: center; }
+        .btn-setup { background: var(--primary); color: white; grid-column: span 2; }
+        .btn-export { background: #eee; color: #444; }
+        .btn-import { background: #eee; color: #444; }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
         .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid #eee; }
         table { width: 100%; border-collapse: collapse; min-width: 400px; }
         th, td { padding: 12px 8px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #fafafa; color: #666; font-size: 0.85em; text-transform: uppercase; }
+        th { background: #fafafa; color: #666; font-size: 0.85em; }
         .checkbox-cell { text-align: center; }
-        input[type="checkbox"] { width: 28px; height: 28px; cursor: pointer; }
-        .note-input { width: 90%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        input[type="checkbox"] { width: 30px; height: 30px; cursor: pointer; }
+        .note-input { width: 90%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         .completed { background-color: #f1f8e9 !important; color: #888; }
         .current-week { border-left: 5px solid var(--primary); background-color: #fffde7; font-weight: bold; }
+        #fileInput { display: none; }
     </style>
 </head>
 <body>
@@ -37,8 +39,10 @@
     <div id="statBox" class="stats">載入中...</div>
     
     <div class="btn-group">
-        <button class="btn btn-setup" onclick="setupNotifications()">🔔 啟動提醒功能</button>
-        <button class="btn btn-test" onclick="testNotification()">🧪 測試通知</button>
+        <button class="btn btn-setup" onclick="setupNotifications()">🔔 啟動智能提醒功能</button>
+        <button class="btn btn-export" onclick="exportData()">📤 匯出備份</button>
+        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📥 匯入備份</button>
+        <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
     </div>
     
     <div class="table-wrapper">
@@ -79,9 +83,7 @@
             const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
             const isChecked = localStorage.getItem(weekId) === 'true';
             const savedNote = localStorage.getItem(weekId + '-note') || '';
-            
-            const now = new Date();
-            const isThisWeek = (now >= mon && now <= sunTime);
+            const isThisWeek = (new Date() >= mon && new Date() <= sunTime);
 
             if (isChecked) completedCount++;
             totalWeeks++;
@@ -95,7 +97,7 @@
                 <td>${bottleCount}</td>
                 <td>${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}</td>
                 <td>
-                    <input type="text" class="note-input" placeholder="點選勾選自動填入" 
+                    <input type="text" class="note-input" placeholder="..." 
                            id="${weekId}-note" value="${savedNote}" 
                            oninput="saveNote('${weekId}')">
                 </td>
@@ -108,7 +110,7 @@
             current.setDate(current.getDate() + 7);
             bottleCount++;
         }
-        statBox.innerText = `進度：已領取 ${completedCount} / 剩餘 ${totalWeeks - completedCount} 瓶`;
+        statBox.innerText = `進度：已領 ${completedCount} / 剩餘 ${totalWeeks - completedCount} 瓶`;
     }
 
     function handleCheck(id, monISO, sunISO) {
@@ -119,7 +121,7 @@
 
         if (cb.checked) {
             if (now < new Date(monISO) || now > new Date(sunISO)) {
-                alert('⚠️ 領取失敗：今天不在這瓶牛奶的兌換期間內！');
+                alert('⚠️ 領取失敗：今天不在兌換期間內！');
                 cb.checked = false;
                 return;
             }
@@ -133,7 +135,7 @@
             row.classList.remove('completed');
         }
         localStorage.setItem(id, cb.checked);
-        initCalendar(); // 刷新統計
+        initCalendar();
     }
 
     function saveNote(id) {
@@ -144,60 +146,86 @@
         if (Notification.permission !== 'granted') return;
 
         const now = new Date();
-        const day = now.getDay(); 
+        const day = now.getDay(); // 0 是週日, 1-6 是週一到六
         const hour = now.getHours();
-
+        
+        // 找到本週一的 ID
         const offset = (day === 0) ? -6 : 1 - day;
         const mon = new Date(now);
         mon.setDate(now.getDate() + offset);
         const weekId = `week-${mon.getFullYear()}-${mon.getMonth()+1}-${mon.getDate()}`;
         
+        // 如果當週已完成，直接結束
         if (localStorage.getItem(weekId) === 'true') return;
 
-        let msg = "";
-        const tag = `milk-2026-${weekId}-${day}`;
+        // 每天早上 9 點跟晚上 9 點提醒
+        if (hour === 9 || hour === 21) {
+            let msg = "";
+            const timeTag = hour === 9 ? "AM" : "PM";
+            const notificationTag = `milk-2026-${weekId}-${day}-${timeTag}`;
 
-        // 強化提醒邏輯
-        if (day === 1 && hour >= 8 && hour < 10) msg = "🥛 新的一週開始！別忘了兌換本週牛奶。";
-        else if (day === 3 && hour >= 8 && hour < 10) msg = "⏳ 週三囉！牛奶領取了嗎？";
-        else if (day === 4 && hour >= 12 && hour < 14) msg = "📅 週四午餐時間，記得順便去領牛奶喔！";
-        else if (day === 5 && hour >= 8 && hour < 10) msg = "⚠️ 倒數兩天！再不領就沒機會了！";
-        else if (day === 6 && hour >= 18) msg = "🚨 明天最後一天！請務必前往兌換。";
-        else if (day === 0 && hour >= 10) msg = "🔥 最後衝刺！今天是本週牛奶兌換截止日！";
+            switch(day) {
+                case 1: msg = "🥛 新的一週開始！別忘了兌換本週牛奶。"; break;
+                case 2: msg = "🧪 又是美好的一天，順路去換瓶牛奶吧！"; break;
+                case 3: msg = "⏳ 小週末，牛奶領取了嗎？"; break;
+                case 4: msg = "📅 牛奶時間，記得去領牛奶喔！"; break;
+                case 5: msg = "⚠️ 倒數兩天！再不領就沒機會了！"; break;
+                case 6: msg = "🚨 明天最後一天！請務必前往兌換。"; break;
+                case 0: msg = "🔥 最後最後！本週牛奶要掰掰啦！"; break;
+            }
 
-        if (msg) {
-            new Notification('牛奶兌換提醒', {
-                body: msg,
-                icon: 'https://cdn-icons-png.flaticon.com/512/372/372922.png',
-                tag: tag,
-                requireInteraction: true // 通知會一直停在畫面上直到使用者處理
-            });
+            if (msg) {
+                new Notification('牛奶兌換提醒', {
+                    body: msg,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/372/372922.png',
+                    tag: notificationTag,
+                    requireInteraction: true
+                });
+            }
         }
+    }
+
+    function exportData() {
+        const data = JSON.stringify(localStorage);
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `牛奶紀錄備份_${new Date().toLocaleDateString()}.json`;
+        a.click();
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+                alert('匯入成功！');
+                location.reload();
+            } catch (err) { alert('檔案格式不正確'); }
+        };
+        reader.readAsText(file);
     }
 
     async function setupNotifications() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            alert('提醒功能啟動成功！');
+            alert('通知功能已啟動！每天 09:00 與 21:00 將提醒未領取的牛奶。');
             runAutoReminders();
         }
     }
 
-    function testNotification() {
-        if (Notification.permission === 'granted') {
-            new Notification('測試成功！', { body: '這就是提醒會顯示的樣子 🥛' });
-        } else {
-            alert('請先點擊「啟動提醒功能」並允許權限');
-        }
-    }
-
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').then(() => console.log('SW Registered'));
+        navigator.serviceWorker.register('./sw.js');
     }
 
     initCalendar();
     runAutoReminders();
-    setInterval(runAutoReminders, 1800000); // 縮短為 30 分鐘檢查一次
+    // 每 30 分鐘檢查一次
+    setInterval(runAutoReminders, 1800000);
 </script>
 </body>
 </html>
