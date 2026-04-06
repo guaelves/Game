@@ -7,10 +7,10 @@
     <link rel="apple-touch-icon" href="icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZjlmYSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1pbGsgVHJhY2tlciIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgInNob3J0X25hbWUiIjogIk1pbGsiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgInRoZW1lX2NvbG9yIjogIiM0YThmZmYiCn0=">
     <style>
         :root { --primary: #4a8fff; --bg: #f8f9fa; }
-        * { box-sizing: border-box; } /* 確保 padding 不會撐開寬度 */
+        * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); padding: 10px; display: flex; justify-content: center; margin: 0; }
         
         .app-container { width: 100%; max-width: 500px; background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
@@ -36,11 +36,10 @@
         .table-wrapper { width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid #eee; margin-top: 2px; }
         .collapsed-content { display: none; }
         
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; } /* 固定佈局防止撐開 */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 8px 4px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         th { background: #fafafa; color: #777; font-size: 0.75em; }
         
-        /* 欄位寬度比例分配 */
         .col-id { width: 10%; text-align: center; }
         .col-range { width: 42%; }
         .col-note { width: 28%; }
@@ -140,7 +139,7 @@
                 <tr class="${w.checked ? 'completed' : ''} ${w.current ? 'current-week' : ''}">
                     <td class="col-id">${w.num}</td>
                     <td class="col-range">${w.range}</td>
-                    <td class="col-note"><input type="text" class="note-input" value="${w.note}" oninput="saveNote('${w.id}', this.value)"></td>
+                    <td class="col-note"><input type="text" id="note-${w.id}" class="note-input" value="${w.note}" oninput="saveNote('${w.id}', this.value)"></td>
                     <td class="col-check checkbox-cell">
                         <input type="checkbox" ${w.checked ? 'checked' : ''} onchange="handleCheck('${w.id}', '${w.monISO}', '${w.sunISO}')">
                     </td>
@@ -178,14 +177,24 @@
     function handleCheck(id, monISO, sunISO) {
         const now = new Date();
         const isChecked = event.target.checked;
-        if (isChecked && (now < new Date(monISO) || now > new Date(sunISO))) {
-            alert('⚠️ 不在該期間內！');
-            event.target.checked = false;
-            return;
+        const noteInput = document.getElementById(`note-${id}`);
+        const hasNote = noteInput && noteInput.value.trim() !== "";
+
+        // 修改處：如果勾選且「不在時間內」且「沒填備註」，則攔截
+        if (isChecked) {
+            const inTimeRange = (now >= new Date(monISO) && now <= new Date(sunISO));
+            if (!inTimeRange && !hasNote) {
+                alert('⚠️ 不在期間內且未填寫備註，無法勾選！');
+                event.target.checked = false;
+                return;
+            }
         }
+
         localStorage.setItem(id, isChecked);
-        if (isChecked && !localStorage.getItem(id + '-note')) {
-            localStorage.setItem(id + '-note', `${now.getMonth()+1}/${now.getDate()} 領取`);
+        // 如果是勾選且備註為空，自動補上今日日期
+        if (isChecked && !hasNote) {
+            const dateStr = `${now.getMonth()+1}/${now.getDate()} 領取`;
+            localStorage.setItem(id + '-note', dateStr);
         }
         initCalendar();
     }
@@ -220,4 +229,3 @@
 </script>
 </body>
 </html>
-
