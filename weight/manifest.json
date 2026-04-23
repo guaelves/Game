@@ -1,1 +1,22 @@
+{
+  "short_name": "減重紀錄",
+  "name": "減重紀錄",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#4a8fff",
+  "background_color": "#f8f9fa"
 
