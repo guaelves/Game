@@ -1,6 +1,6 @@
 {
   "name": "週期減重記錄",
-  "short_name": "減重App",
+  "short_name": "週期減重記錄",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f6f8",
