@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>週期減重記錄</title>
-<!-- App Icon -->
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
 
-<!-- PWA Manifest -->
+<title>週期減重記錄</title>
+
+<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4CAF50">
-    
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -64,7 +64,7 @@ canvas{
 
 <body>
 
-<h2 style="text-align:center;">📉 週期減重規劃系統</h2>
+<h2 style="text-align:center;">📉 週期減重記錄</h2>
 
 <div class="card">
 <h3>👤 基本資料</h3>
@@ -109,56 +109,44 @@ canvas{
 let plan = [];
 let chart;
 
-// 預設今天
+// 預設日期
 document.getElementById("startD").valueAsDate = new Date();
 document.getElementById("goalD").valueAsDate = new Date();
 
-// ===== 載入資料 =====
+// 載入資料
 window.onload = function(){
 
     let data = JSON.parse(localStorage.getItem("fatloss"));
 
     if(!data) return;
 
-    // 還原基本資料
     ["h","w","a","startD","goalW","goalD"].forEach(id=>{
         if(data[id]){
             document.getElementById(id).value = data[id];
         }
     });
 
-    // ⭐ 還原整個計畫（關鍵）
     if(data.plan && data.plan.length){
-
         plan = data.plan;
         renderTable();
         drawChart();
-
-    } else {
-        generate();
     }
 };
 
-// ===== 儲存 =====
+// 儲存
 function save(){
-    let data = {
-        h: document.getElementById("h").value,
-        w: document.getElementById("w").value,
-        a: document.getElementById("a").value,
-        startD: document.getElementById("startD").value,
-        goalW: document.getElementById("goalW").value,
-        goalD: document.getElementById("goalD").value,
-        plan: plan
-    };
-    localStorage.setItem("fatloss", JSON.stringify(data));
+    localStorage.setItem("fatloss", JSON.stringify({
+        h:h.value,w:w.value,a:a.value,
+        startD:startD.value,
+        goalW:goalW.value,
+        goalD:goalD.value,
+        plan
+    }));
 }
 
-// ===== 工具 =====
+// 工具
 function formatDate(d){
-    let y = d.getFullYear();
-    let m = String(d.getMonth()+1).padStart(2,'0');
-    let day = String(d.getDate()).padStart(2,'0');
-    return `${y}/${m}/${day}`;
+    return d.toISOString().slice(0,10).replace(/-/g,"/");
 }
 
 function addDays(date,days){
@@ -167,173 +155,129 @@ function addDays(date,days){
     return d;
 }
 
-// ===== 生成 =====
+// 生成
 function generate(){
 
-    let h = +document.getElementById("h").value;
-    let w = +document.getElementById("w").value;
-    let a = +document.getElementById("a").value;
+    let H = +h.value;
+    let W = +w.value;
+    let A = +a.value;
 
-    let startDate = new Date(document.getElementById("startD").value);
-    let goalWeight = +document.getElementById("goalW").value;
-    let goalDate = new Date(document.getElementById("goalD").value);
+    let startDate = new Date(startD.value);
+    let goalWeight = +goalW.value;
+    let goalDate = new Date(goalD.value);
 
-    let bmi = w / ((h/100)**2);
-    let bmr = 10*w + 6.25*h - 5*a - 161;
-
+    let bmi = W / ((H/100)**2);
+    let bmr = 10*W + 6.25*H - 5*A - 161;
     let tdee = bmr * 1.375;
     let suggest = tdee - 500;
 
-    document.getElementById("info").innerHTML = `
-        📊 BMI：${bmi.toFixed(1)}<br>
-        🔥 BMR：${bmr.toFixed(0)} kcal<br>
-        ⚡ TDEE：${tdee.toFixed(0)} kcal<br>
-        🍽️ 建議攝取：${suggest.toFixed(0)} kcal
-    `;
+    info.innerHTML = `
+    📊 BMI：${bmi.toFixed(1)}<br>
+    🔥 BMR：${bmr.toFixed(0)} kcal<br>
+    ⚡ TDEE：${tdee.toFixed(0)} kcal<br>
+    🍽️ 建議攝取：${suggest.toFixed(0)} kcal`;
 
-    buildTable(startDate, w, goalWeight, goalDate);
+    buildTable(startDate, W, goalWeight, goalDate);
 }
 
-// ===== 建表 =====
+// 建表
 function buildTable(startDate, startWeight, target, goalDate){
 
-    let tbody = document.getElementById("table");
-    tbody.innerHTML = "";
-    plan = [];
+    table.innerHTML="";
+    plan=[];
 
-    let totalDays = (goalDate - startDate) / (1000*60*60*24);
-    let weeks = Math.ceil(totalDays / 7);
+    let weeks = Math.ceil((goalDate-startDate)/(1000*60*60*24)/7);
 
-    if(weeks <= 0){
-        alert("目標日期需大於起始日");
-        return;
-    }
+    if(weeks<=0) return alert("日期錯誤");
 
-    let totalLoss = startWeight - target;
+    let loss = startWeight-target;
+    let weekly = loss/weeks;
 
-    if(totalLoss <= 0){
-        alert("目標體重需小於起始體重");
-        return;
-    }
+    if(weekly>0.7) return alert("減太快");
 
-    let weeklyLoss = totalLoss / weeks;
+    let w = startWeight;
 
-    if(weeklyLoss > 0.7){
-        alert(`⚠️ 每週需減重 ${weeklyLoss.toFixed(2)} kg，過難`);
-        return;
-    }
+    for(let i=0;i<=weeks;i++){
 
-    let weight = startWeight;
+        let date = addDays(startDate,i*7);
 
-    for(let week=0; week<=weeks; week++){
-
-        let date = addDays(startDate, week*7);
-        let targetWeight = (week===0)? startWeight : (weight -= weeklyLoss);
+        let t = (i===0)?w:(w-=weekly);
 
         plan.push({
-            week,
-            date: formatDate(date),
-            target: targetWeight.toFixed(1),
-            actual: (week===0 ? startWeight : "")
+            week:i,
+            date:formatDate(date),
+            target:t.toFixed(1),
+            actual:(i===0?startWeight:"")
         });
     }
 
     renderTable();
     drawChart();
-    save(); // ⭐ 生成後存
+    save();
 }
 
-// ===== 渲染表格（共用）=====
+// 表格
 function renderTable(){
 
-    let tbody = document.getElementById("table");
-    tbody.innerHTML = "";
+    table.innerHTML="";
 
     plan.forEach((r,i)=>{
 
-        let diffText = "-";
+        let diff="-";
 
-        if(i === 0){
-            diffText = "0.0 (起始)";
-        }else if(r.actual !== ""){
-            let d = (r.actual - r.target).toFixed(1);
-            diffText = d < 0
-                ? `<span class="green">▼ ${d}</span>`
-                : `<span class="red">▲ +${d}</span>`;
+        if(i===0) diff="0.0";
+        else if(r.actual!==""){
+            let d=(r.actual-r.target).toFixed(1);
+            diff = d<0?`<span class=green>▼${d}</span>`:`<span class=red>▲+${d}</span>`;
         }
 
-        let tr = document.createElement("tr");
-
-        tr.innerHTML = `
-            <td>第${r.week}週</td>
-            <td>${r.date}</td>
-            <td>${r.target} kg</td>
-            <td>
-                <input value="${r.actual}" onchange="update(${i},this.value)">
-            </td>
-            <td id="diff${i}">${diffText}</td>
-        `;
-
-        tbody.appendChild(tr);
+        table.innerHTML+=`
+        <tr>
+        <td>${r.week}</td>
+        <td>${r.date}</td>
+        <td>${r.target}</td>
+        <td><input value="${r.actual}" onchange="update(${i},this.value)"></td>
+        <td id="d${i}">${diff}</td>
+        </tr>`;
     });
 }
 
-// ===== 更新 =====
-function update(i,val){
+// 更新
+function update(i,v){
 
-    plan[i].actual = val ? parseFloat(val) : "";
+    plan[i].actual = v?parseFloat(v):"";
 
-    let diffCell = document.getElementById("diff"+i);
+    let d = plan[i].actual - plan[i].target;
 
-    if(plan[i].actual !== ""){
-        let d = (plan[i].actual - plan[i].target).toFixed(1);
+    document.getElementById("d"+i).innerHTML =
+        v ? (d<0?`<span class=green>▼${d.toFixed(1)}</span>`:`<span class=red>▲+${d.toFixed(1)}</span>`) : "-";
 
-        diffCell.innerHTML =
-            d < 0
-            ? `<span class="green">▼ ${d}</span>`
-            : `<span class="red">▲ +${d}</span>`;
-    } else {
-        diffCell.innerHTML = "-";
-    }
-
-    save();      // ⭐ 每次輸入都存
+    save();
     drawChart();
 }
 
-// ===== 圖表 =====
+// 圖表
 function drawChart(){
-
-    let labels = plan.map(p=>`W${p.week}`);
-    let targetData = plan.map(p=>p.target);
-    let actualData = plan.map(p=>p.actual || null);
 
     if(chart) chart.destroy();
 
-    chart = new Chart(document.getElementById("chart"), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: '目標',
-                    data: targetData,
-                    borderColor: 'blue',
-                    fill:false
-                },
-                {
-                    label: '實際',
-                    data: actualData,
-                    borderColor: 'red',
-                    fill:false
-                }
+    chart = new Chart(chartCanvas,{
+        type:'line',
+        data:{
+            labels:plan.map(p=>"W"+p.week),
+            datasets:[
+                {label:'目標',data:plan.map(p=>p.target),borderColor:'blue'},
+                {label:'實際',data:plan.map(p=>p.actual||null),borderColor:'red'}
             ]
         }
     });
 }
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+// Service Worker
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js');
 }
+
 </script>
 
 </body>
