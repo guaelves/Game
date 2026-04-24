@@ -3,14 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>週期減重記錄</title>
 
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4CAF50">
-<link rel="icon" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -30,27 +28,44 @@ body{
     box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-input{
-    padding:6px;
-    width:120px;
-    margin:4px;
+/* 🔥 表格外層（手機可滑動） */
+.table-wrap{
+    overflow-x:auto;
 }
 
+/* 🔥 表格核心優化 */
 table{
     width:100%;
+    table-layout:fixed;
     border-collapse:collapse;
     font-size:14px;
+    min-width:420px; /* 防止過窄 */
 }
 
 th,td{
     border-bottom:1px solid #eee;
     text-align:center;
     padding:6px;
+    white-space:nowrap; /* ❗不換行 */
 }
 
 th{
     background:#4CAF50;
     color:white;
+}
+
+/* 🔥 欄位比例 */
+th:nth-child(1), td:nth-child(1){ width:12%; }
+th:nth-child(2), td:nth-child(2){ width:28%; }
+th:nth-child(3), td:nth-child(3){ width:15%; }
+th:nth-child(4), td:nth-child(4){ width:25%; }
+th:nth-child(5), td:nth-child(5){ width:20%; }
+
+/* 🔥 input 不撐爆 */
+td input{
+    width:100%;
+    box-sizing:border-box;
+    padding:4px;
 }
 
 .green{ color:green; }
@@ -64,7 +79,7 @@ canvas{
 
 <body>
 
-<h2 style="text-align:center;">📉 週期減重記錄</h2>
+<h2 style="text-align:center;">📉 週期減重規劃系統</h2>
 
 <div class="card">
 <h3>👤 基本資料</h3>
@@ -90,6 +105,7 @@ canvas{
 <div class="card">
 <h3>📅 每週減重追蹤</h3>
 
+<div class="table-wrap">
 <table>
 <thead>
 <tr>
@@ -104,36 +120,31 @@ canvas{
 </table>
 </div>
 
+</div>
+
 <script>
 
 let plan = [];
 let chart;
 
-// 預設日期
-document.getElementById("startD").valueAsDate = new Date();
-document.getElementById("goalD").valueAsDate = new Date();
+startD.valueAsDate = new Date();
+goalD.valueAsDate = new Date();
 
-// 載入資料
 window.onload = function(){
-
     let data = JSON.parse(localStorage.getItem("fatloss"));
-
     if(!data) return;
 
     ["h","w","a","startD","goalW","goalD"].forEach(id=>{
-        if(data[id]){
-            document.getElementById(id).value = data[id];
-        }
+        if(data[id]) document.getElementById(id).value = data[id];
     });
 
-    if(data.plan && data.plan.length){
+    if(data.plan){
         plan = data.plan;
         renderTable();
         drawChart();
     }
 };
 
-// 儲存
 function save(){
     localStorage.setItem("fatloss", JSON.stringify({
         h:h.value,w:w.value,a:a.value,
@@ -144,68 +155,56 @@ function save(){
     }));
 }
 
-// 工具
 function formatDate(d){
     return d.toISOString().slice(0,10).replace(/-/g,"/");
 }
 
 function addDays(date,days){
-    let d = new Date(date);
+    let d=new Date(date);
     d.setDate(d.getDate()+days);
     return d;
 }
 
-// 生成
 function generate(){
 
-    let H = +h.value;
-    let W = +w.value;
-    let A = +a.value;
+    let H=+h.value;
+    let W=+w.value;
+    let A=+a.value;
 
-    let startDate = new Date(startD.value);
-    let goalWeight = +goalW.value;
-    let goalDate = new Date(goalD.value);
+    let startDate=new Date(startD.value);
+    let goalWeight=+goalW.value;
+    let goalDate=new Date(goalD.value);
 
-    let bmi = W / ((H/100)**2);
-    let bmr = 10*W + 6.25*H - 5*A - 161;
-    let tdee = bmr * 1.375;
-    let suggest = tdee - 500;
+    let bmi=W/((H/100)**2);
+    let bmr=10*W+6.25*H-5*A-161;
+    let tdee=bmr*1.375;
 
-    info.innerHTML = `
+    info.innerHTML=`
     📊 BMI：${bmi.toFixed(1)}<br>
     🔥 BMR：${bmr.toFixed(0)} kcal<br>
-    ⚡ TDEE：${tdee.toFixed(0)} kcal<br>
-    🍽️ 建議攝取：${suggest.toFixed(0)} kcal`;
+    ⚡ TDEE：${tdee.toFixed(0)} kcal`;
 
-    buildTable(startDate, W, goalWeight, goalDate);
+    buildTable(startDate,W,goalWeight,goalDate);
 }
 
-// 建表
-function buildTable(startDate, startWeight, target, goalDate){
+function buildTable(startDate,startWeight,target,goalDate){
 
     table.innerHTML="";
     plan=[];
 
-    let weeks = Math.ceil((goalDate-startDate)/(1000*60*60*24)/7);
+    let weeks=Math.ceil((goalDate-startDate)/(1000*60*60*24)/7);
+    let loss=startWeight-target;
+    let weekly=loss/weeks;
 
-    if(weeks<=0) return alert("日期錯誤");
-
-    let loss = startWeight-target;
-    let weekly = loss/weeks;
-
-    if(weekly>0.7) return alert("減太快");
-
-    let w = startWeight;
+    let w=startWeight;
 
     for(let i=0;i<=weeks;i++){
 
-        let date = addDays(startDate,i*7);
-
-        let t = (i===0)?w:(w-=weekly);
+        let t=(i===0)?w:(w-=weekly);
 
         plan.push({
             week:i,
-            date:formatDate(date),
+            date:formatDate(addDays(startDate,i*7)),
             target:t.toFixed(1),
             actual:(i===0?startWeight:"")
         });
@@ -216,7 +215,6 @@ function buildTable(startDate, startWeight, target, goalDate){
     save();
 }
 
-// 表格
 function renderTable(){
 
     table.innerHTML="";
@@ -228,7 +226,7 @@ function renderTable(){
         if(i===0) diff="0.0";
         else if(r.actual!==""){
             let d=(r.actual-r.target).toFixed(1);
-            diff = d<0?`<span class=green>▼${d}</span>`:`<span class=red>▲+${d}</span>`;
+            diff=d<0?`<span class=green>▼${d}</span>`:`<span class=red>▲+${d}</span>`;
         }
 
         table.innerHTML+=`
@@ -242,12 +240,11 @@ function renderTable(){
     });
 }
 
-// 更新
 function update(i,v){
 
-    plan[i].actual = v?parseFloat(v):"";
+    plan[i].actual=v?parseFloat(v):"";
 
-    let d = plan[i].actual - plan[i].target;
+    let d=plan[i].actual-plan[i].target;
 
     document.getElementById("d"+i).innerHTML =
         v ? (d<0?`<span class=green>▼${d.toFixed(1)}</span>`:`<span class=red>▲+${d.toFixed(1)}</span>`) : "-";
@@ -256,12 +253,11 @@ function update(i,v){
     drawChart();
 }
 
-// 圖表
 function drawChart(){
 
     if(chart) chart.destroy();
 
-    chart = new Chart(chartCanvas,{
+    chart=new Chart(document.getElementById("chart"),{
         type:'line',
         data:{
             labels:plan.map(p=>"W"+p.week),
@@ -273,7 +269,6 @@ function drawChart(){
     });
 }
 
-// Service Worker
 if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js');
 }
