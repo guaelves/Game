@@ -3,206 +3,334 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>減重記錄 App</title>
-<link rel="apple-touch-icon" href="icon.png">
+<title>週期減重記錄</title>
+<!-- App Icon -->
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4CAF50">
+    
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
+body{
     font-family: Arial;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 10px;
+    background:#f4f6f8;
+    margin:0;
+    padding:10px;
 }
 
-h2 {
-    text-align: center;
-    margin: 10px 0;
+.card{
+    background:white;
+    padding:12px;
+    margin-bottom:10px;
+    border-radius:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-.card {
-    background: white;
-    border-radius: 12px;
-    padding: 10px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+input{
+    padding:6px;
+    width:120px;
+    margin:4px;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
 }
 
-th, td {
-    padding: 6px;
-    border-bottom: 1px solid #eee;
-    text-align: center;
+th,td{
+    border-bottom:1px solid #eee;
+    text-align:center;
+    padding:6px;
 }
 
-th {
-    background: #4CAF50;
-    color: white;
+th{
+    background:#4CAF50;
+    color:white;
 }
 
-input {
-    width: 70px;
-    text-align: center;
-}
+.green{ color:green; }
+.red{ color:red; }
 
-.green { color: green; }
-.red { color: red; }
-
-.small {
-    font-size: 12px;
-    color: #666;
-}
-
-button {
-    padding: 6px 10px;
-    margin: 5px;
+canvas{
+    max-height:260px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>📉 減重記錄 App</h2>
+<h2 style="text-align:center;">📉 週期減重規劃系統</h2>
 
 <div class="card">
-    <canvas id="chart"></canvas>
+<h3>👤 基本資料</h3>
+
+身高(cm) <input id="h"><br>
+起始體重(kg) <input id="w"><br>
+年齡 <input id="a"><br><br>
+
+📅 起始日期 <input type="date" id="startD"><br>
+🎯 目標體重(kg) <input id="goalW"><br>
+📅 目標日期 <input type="date" id="goalD"><br><br>
+
+<button onclick="generate()">生成週計畫</button>
+
+<div id="info"></div>
 </div>
 
 <div class="card">
-    <button onclick="saveData()">💾 儲存</button>
+<h3>📊 體重變化</h3>
+<canvas id="chart"></canvas>
 </div>
 
 <div class="card">
-<table id="table">
+<h3>📅 每週減重追蹤</h3>
+
+<table>
 <thead>
 <tr>
-    <th>週</th>
-    <th>日期</th>
-    <th>目標</th>
-    <th>目前</th>
-    <th>差異</th>
+<th>週次</th>
+<th>日期</th>
+<th>目標</th>
+<th>實際</th>
+<th>差異</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="table"></tbody>
 </table>
 </div>
 
 <script>
-let data = [
-["第0週","4/1",65.5,""],
-["第1週","4/7",64.8,63.4],
-["第2週","4/14",64.0,64.5],
-["第3週","4/21",63.3,64.1],
-["第4週","4/28",62.6,""],
-["第5週","5/5",61.9,""],
-["第6週","5/12",61.2,""],
-["第7週","5/19",60.5,""],
-["第8週","5/26",59.8,""],
-["第9週","6/2",59.1,""],
-["第10週","6/9",58.4,""],
-["第11週","6/16",57.7,""],
-["第12週","6/23",57.0,""],
-["第13週","6/30",56.3,""],
-["第14週","7/7",55.8,""],
-["第15週","7/14",55.3,""],
-["第16週","7/21",54.8,""],
-["第17週","7/28",54.3,""],
-["第18週","8/4",53.8,""],
-["第19週","8/11",53.3,""],
-["第20週","8/18",52.8,""],
-["第21週","8/25",52.3,""],
-["第22週","8/31",51.5,""]
-];
 
-function load(){
-    let saved = localStorage.getItem("weightApp");
-    if(saved) data = JSON.parse(saved);
+let plan = [];
+let chart;
 
-    let tbody = document.querySelector("tbody");
+// 預設今天
+document.getElementById("startD").valueAsDate = new Date();
+document.getElementById("goalD").valueAsDate = new Date();
+
+// ===== 載入資料 =====
+window.onload = function(){
+
+    let data = JSON.parse(localStorage.getItem("fatloss"));
+
+    if(!data) return;
+
+    // 還原基本資料
+    ["h","w","a","startD","goalW","goalD"].forEach(id=>{
+        if(data[id]){
+            document.getElementById(id).value = data[id];
+        }
+    });
+
+    // ⭐ 還原整個計畫（關鍵）
+    if(data.plan && data.plan.length){
+
+        plan = data.plan;
+        renderTable();
+        drawChart();
+
+    } else {
+        generate();
+    }
+};
+
+// ===== 儲存 =====
+function save(){
+    let data = {
+        h: document.getElementById("h").value,
+        w: document.getElementById("w").value,
+        a: document.getElementById("a").value,
+        startD: document.getElementById("startD").value,
+        goalW: document.getElementById("goalW").value,
+        goalD: document.getElementById("goalD").value,
+        plan: plan
+    };
+    localStorage.setItem("fatloss", JSON.stringify(data));
+}
+
+// ===== 工具 =====
+function formatDate(d){
+    let y = d.getFullYear();
+    let m = String(d.getMonth()+1).padStart(2,'0');
+    let day = String(d.getDate()).padStart(2,'0');
+    return `${y}/${m}/${day}`;
+}
+
+function addDays(date,days){
+    let d = new Date(date);
+    d.setDate(d.getDate()+days);
+    return d;
+}
+
+// ===== 生成 =====
+function generate(){
+
+    let h = +document.getElementById("h").value;
+    let w = +document.getElementById("w").value;
+    let a = +document.getElementById("a").value;
+
+    let startDate = new Date(document.getElementById("startD").value);
+    let goalWeight = +document.getElementById("goalW").value;
+    let goalDate = new Date(document.getElementById("goalD").value);
+
+    let bmi = w / ((h/100)**2);
+    let bmr = 10*w + 6.25*h - 5*a - 161;
+
+    let tdee = bmr * 1.375;
+    let suggest = tdee - 500;
+
+    document.getElementById("info").innerHTML = `
+        📊 BMI：${bmi.toFixed(1)}<br>
+        🔥 BMR：${bmr.toFixed(0)} kcal<br>
+        ⚡ TDEE：${tdee.toFixed(0)} kcal<br>
+        🍽️ 建議攝取：${suggest.toFixed(0)} kcal
+    `;
+
+    buildTable(startDate, w, goalWeight, goalDate);
+}
+
+// ===== 建表 =====
+function buildTable(startDate, startWeight, target, goalDate){
+
+    let tbody = document.getElementById("table");
+    tbody.innerHTML = "";
+    plan = [];
+
+    let totalDays = (goalDate - startDate) / (1000*60*60*24);
+    let weeks = Math.ceil(totalDays / 7);
+
+    if(weeks <= 0){
+        alert("目標日期需大於起始日");
+        return;
+    }
+
+    let totalLoss = startWeight - target;
+
+    if(totalLoss <= 0){
+        alert("目標體重需小於起始體重");
+        return;
+    }
+
+    let weeklyLoss = totalLoss / weeks;
+
+    if(weeklyLoss > 0.7){
+        alert(`⚠️ 每週需減重 ${weeklyLoss.toFixed(2)} kg，過難`);
+        return;
+    }
+
+    let weight = startWeight;
+
+    for(let week=0; week<=weeks; week++){
+
+        let date = addDays(startDate, week*7);
+        let targetWeight = (week===0)? startWeight : (weight -= weeklyLoss);
+
+        plan.push({
+            week,
+            date: formatDate(date),
+            target: targetWeight.toFixed(1),
+            actual: (week===0 ? startWeight : "")
+        });
+    }
+
+    renderTable();
+    drawChart();
+    save(); // ⭐ 生成後存
+}
+
+// ===== 渲染表格（共用）=====
+function renderTable(){
+
+    let tbody = document.getElementById("table");
     tbody.innerHTML = "";
 
-    let labels = [];
-    let weights = [];
+    plan.forEach((r,i)=>{
 
-    data.forEach((r,i)=>{
-        let diff = "";
-        let cls = "";
+        let diffText = "-";
 
-        if(r[3] !== "" && r[3] !== undefined){
-            diff = (r[3] - r[2]).toFixed(1);
-
-            if(diff < 0){
-                cls = "green";
-                diff = "▼ " + diff;
-            } else {
-                cls = "red";
-                diff = "▲ +" + diff;
-            }
-        }
-
-        labels.push(r[1]);
-        weights.push(r[3] || null);
-
-        let targetDiff = "";
-        if(r[3]){
-            targetDiff = (r[3] - r[2]).toFixed(1);
+        if(i === 0){
+            diffText = "0.0 (起始)";
+        }else if(r.actual !== ""){
+            let d = (r.actual - r.target).toFixed(1);
+            diffText = d < 0
+                ? `<span class="green">▼ ${d}</span>`
+                : `<span class="red">▲ +${d}</span>`;
         }
 
         let tr = document.createElement("tr");
+
         tr.innerHTML = `
-            <td>${r[0]}</td>
-            <td>${r[1]}</td>
-            <td>${r[2]} kg</td>
-            <td><input value="${r[3]||''}" onchange="update(${i},this.value)"></td>
-            <td class="${cls}">${targetDiff?targetDiff:''}</td>
+            <td>第${r.week}週</td>
+            <td>${r.date}</td>
+            <td>${r.target} kg</td>
+            <td>
+                <input value="${r.actual}" onchange="update(${i},this.value)">
+            </td>
+            <td id="diff${i}">${diffText}</td>
         `;
+
         tbody.appendChild(tr);
     });
-
-    drawChart(labels, weights);
 }
 
+// ===== 更新 =====
 function update(i,val){
-    data[i][3] = val ? parseFloat(val) : "";
-    saveData();
-    load();
+
+    plan[i].actual = val ? parseFloat(val) : "";
+
+    let diffCell = document.getElementById("diff"+i);
+
+    if(plan[i].actual !== ""){
+        let d = (plan[i].actual - plan[i].target).toFixed(1);
+
+        diffCell.innerHTML =
+            d < 0
+            ? `<span class="green">▼ ${d}</span>`
+            : `<span class="red">▲ +${d}</span>`;
+    } else {
+        diffCell.innerHTML = "-";
+    }
+
+    save();      // ⭐ 每次輸入都存
+    drawChart();
 }
 
-function saveData(){
-    localStorage.setItem("weightApp",JSON.stringify(data));
-}
+// ===== 圖表 =====
+function drawChart(){
 
-function drawChart(labels,weights){
-    new Chart(document.getElementById("chart"),{
-        type:"line",
-        data:{
-            labels:labels,
-            datasets:[{
-                label:"體重變化",
-                data:weights,
-                borderColor:"#4CAF50",
-                spanGaps:true,
-                tension:0.3
-            }]
-        },
-        options:{
-            responsive:true,
-            plugins:{
-                legend:{display:false}
-            },
-            scales:{
-                y:{reverse:false}
-            }
+    let labels = plan.map(p=>`W${p.week}`);
+    let targetData = plan.map(p=>p.target);
+    let actualData = plan.map(p=>p.actual || null);
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: '目標',
+                    data: targetData,
+                    borderColor: 'blue',
+                    fill:false
+                },
+                {
+                    label: '實際',
+                    data: actualData,
+                    borderColor: 'red',
+                    fill:false
+                }
+            ]
         }
     });
 }
 
-load();
 </script>
 
 </body>
