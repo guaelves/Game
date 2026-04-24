@@ -28,25 +28,26 @@ body{
     box-shadow:0 2px 6px rgba(0,0,0,0.1);
 }
 
-/* 🔥 表格外層（手機可滑動） */
+/* ❌ 不滑動 */
 .table-wrap{
-    overflow-x:auto;
+    overflow-x:hidden;
 }
 
-/* 🔥 表格核心優化 */
+/* 🔥 表格自適應 */
 table{
-    width:95%;
+    width:100%;
     table-layout:fixed;
     border-collapse:collapse;
-    font-size:14px;
-    min-width:420px; /* 防止過窄 */
+    font-size:13px; /* 稍微縮小 */
 }
 
 th,td{
     border-bottom:1px solid #eee;
     text-align:center;
-    padding:6px;
-    white-space:nowrap; /* ❗不換行 */
+    padding:4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis; /* 太長用... */
 }
 
 th{
@@ -54,18 +55,19 @@ th{
     color:white;
 }
 
-/* 🔥 欄位比例 */
-th:nth-child(1), td:nth-child(1){ width:5%; }
-th:nth-child(2), td:nth-child(2){ width:30%; }
+/* 🔥 欄位比例重新壓縮 */
+th:nth-child(1), td:nth-child(1){ width:10%; }
+th:nth-child(2), td:nth-child(2){ width:25%; }
 th:nth-child(3), td:nth-child(3){ width:15%; }
-th:nth-child(4), td:nth-child(4){ width:20%; }
-th:nth-child(5), td:nth-child(5){ width:15%; }
+th:nth-child(4), td:nth-child(4){ width:25%; }
+th:nth-child(5), td:nth-child(5){ width:25%; }
 
-/* 🔥 input 不撐爆 */
+/* 🔥 input 完全自適應 */
 td input{
-    width:95%;
+    width:100%;
     box-sizing:border-box;
-    padding:4px;
+    padding:3px;
+    font-size:13px;
 }
 
 .green{ color:green; }
